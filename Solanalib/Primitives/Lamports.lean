@@ -45,7 +45,7 @@ end Solanalib.Lamports
 `Lamports` arithmetic is u64-modular (wraps at `2^64`); operations that could
 overflow or underflow carry an explicit precondition. For abstract reasoning
 that doesn't care about the bound, use `LamportsUnchecked` instead. -/
-notation "Lamports" => UInt64
+macro "Lamports" : term => `(UInt64)
 
 /-- An unbounded lamport count for abstract reasoning.
 
@@ -53,4 +53,4 @@ A plain `Nat`, so `omega` and Mathlib's `Nat` simp lemmas work without any
 unfolding ceremony. Use this in conservation theorems and other algebraic
 results where the u64 bound is a separate concern handled at the encoding
 layer. Bridge to `Lamports` via `UInt64.toNat` / `UInt64.ofNat`. -/
-notation "LamportsUnchecked" => Nat
+macro "LamportsUnchecked" : term => `(Nat)
