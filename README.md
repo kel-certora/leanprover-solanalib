@@ -61,7 +61,7 @@ Solanalib/
 │   ├── Lamports.lean           UInt64 (= Lamports) + Nat (= LamportsUnchecked)
 │   └── Time.lean               UInt64 (= Timestamp) + Nat (= TimestampUnchecked)
 ├── Numeric/               ← fixed-point + arithmetic infrastructure
-│   └── Fraction.lean           Q68.60 (Nat-backed spec; Fraction128 future)
+│   └── Fraction.lean           signed fixed point Fraction n (Int-backed spec; Q68_60)
 ├── Account/               ← Solana account model
 │   ├── Basic.lean              5-field on-chain Account + credit/debit
 │   └── Transfer.lean           Lamport transfer + conservation theorem
@@ -147,7 +147,7 @@ Lets `ext; simp` close most structural-equality proofs uniformly. Skim any test 
 
 ### 4. **Layered model: spec layer in `Nat`, bounded refinement separate**
 
-`Fraction = Q68.60` is currently `Nat`-backed at the spec layer for arithmetic clarity. The bounded `Fraction128` refinement (matching the on-chain `u128` shape) lives in a separate type with `.toNat` bridge lemmas — same architectural pattern as `Lamports` / `LamportsUnchecked`. This follows the [seL4](https://sel4.systems/) / [CompCert](https://compcert.org/) discipline: prove on the abstract model, refine to the bounded representation as a separate step.
+`Fraction n`, a signed fixed-point number with `n` fractional bits, is `Int`-backed at the spec layer. A bounded `Fraction128` refinement (matching the on-chain `u128` shape) is planned as a separate type with bridge lemmas, the same architectural pattern as `Lamports` / `LamportsUnchecked`. This follows the [seL4](https://sel4.systems/) / [CompCert](https://compcert.org/) discipline: prove on the abstract model, refine to the bounded representation as a separate step.
 
 ---
 
@@ -182,7 +182,7 @@ Inventory of the verified surface as of this commit:
 |---|---|---|
 | `Primitives.Lamports` | `Lamports`, `LamportsUnchecked`, `Lamports.perSol` | — |
 | `Primitives.Pubkey` | `Pubkey` | — |
-| `Numeric.Fraction` | `Fraction`, `scale`, `zero`, `one`, `fromNat`, `toFloor`, `add`, `sub`, `mul`, `div`, `ofLamports`, `toLamports?`, order instances | 14 (monoid, ordering, round-trip, sub/add cancel, div_one) |
+| `Numeric.Fraction` | `Fraction`, `Q68_60`, `toRat`, `toRatOrderAddIso`, `toIntFloor`/`toIntCeil`/`toIntTrunc`, `mulFloor`/`mulCeil`/`mulTrunc`, `divFloor`/`divCeil`/`divTrunc`, `ofLamports`, `toLamports?`, `AddCommGroupWithOne` + `LinearOrder` + `IsOrderedAddMonoid` instances | 91 (order isomorphism with `ℚ`, integer round-trips and rounding error, ordering of floor/trunc/ceil, precision loss of multiplication and division) |
 | `Account.Basic` | `Account`, `credit`, `debit` | 12 (10 `@[simp]` projection + 2 `.toNat` bridge) |
 | `Account.Transfer` | `TransferResult`, `transfer` | 1 (`transfer_preserves_total` — lamport conservation) |
 | `Instruction.Basic` | `Instruction`, `AccountMeta`, `Instruction.signers`, `.writables` | — |
@@ -212,7 +212,7 @@ Listed roughly in order of how foundational they are; not all need to be done be
 
 - [ ] **`Fraction.mul_assoc` error bound.** Truncating `bits / scale` after each multiplication introduces ≤ 1 ULP of error; left-associative and right-associative multiplications can differ by `(a + c) / scale` in the worst case. The theorem statement is straightforward; the proof needs careful `Nat` lemmas about double-truncation.
 - [ ] **`Fraction128` bounded refinement.** Mirror of the `Lamports` / `LamportsUnchecked` story: a `UInt128`-backed `Fraction128` plus `.toNat` bridge. Lean 4 doesn't have native `UInt128`; modelled as `Fin (2^128)` or a `(lo, hi)` `UInt64` pair.
-- [ ] **`Fraction.divCeil`** — round-up variant for slippage / collateralisation calculations.
+- [x] **`Fraction.divCeil`** — round-up variant for slippage / collateralisation calculations.
 - [ ] **Pow / `Real.exp` correspondence** — for compound interest, we'll want a theorem bounding `pow_fraction r n` against the mathematical `e^(r·n)`. Requires importing more of Mathlib.
 
 ### Domain primitives

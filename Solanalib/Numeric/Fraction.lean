@@ -72,24 +72,21 @@ namespace Solanalib
 
 /-- A binary fixed-point number with arbitrary width and with `n` fractional bits.
 
-`Fraction.mk b` represents the real number `b / 2^60`. -/
+`Fraction.mk b` represents the rational number `b / 2^n`. -/
 @[ext]
 structure Fraction (n: ℕ) where
-  /-- The underlying integer encoding: `bits = realValue * 2^n`. -/
+  /-- The underlying integer encoding: `bits = toRat * 2^n`. -/
   bits : ℤ
   deriving Repr, DecidableEq
 
-
-
-
-/-- A binary fixed-point number with 60 fractional to match the
+/-- A binary fixed-point number with 60 fractional bits to match the
 `U68F60` convention common in Solana DeFi.
 -/
 abbrev Q68_60 := Fraction 60
 
 namespace Fraction
 
--- The fractional bits
+-- The number of fractional bits
 variable {n: ℕ}
 
 
@@ -119,7 +116,7 @@ instance : IntCast (Fraction n) where
 
 /-! ### Order -/
 
-/-- The linear order from the underlying in lifts to the fraction type -/
+/-- The linear order on the underlying integer lifts to `Fraction n`. -/
 instance : LinearOrder (Fraction n) :=
   LinearOrder.lift' bits (fun _ _ h ↦ Fraction.ext h)
 
@@ -128,11 +125,10 @@ instance : LinearOrder (Fraction n) :=
 @[simp] theorem bits_lt_bits (f₁ f₂: Fraction n) : f₁.bits < f₂.bits ↔ f₁ < f₂ := by rfl
 
 
-
 /-! ### Addition, Negation, and Subtraction
 
-Addition and subtraction on fixed points are defined over their bits.
-Fixed-point number are closed under both operations, i.e., the results always lands on the grid.
+Addition, negation and subtraction on fixed-point numbers are defined on their bits.
+Fixed-point numbers are closed under these operations, i.e., the results always land on the grid.
 
 -/
 
@@ -260,23 +256,20 @@ number in every rounding direction.
 
 /-! #### Lamports
 
-`Lamports` (= `UInt64`) and `Fraction n` are the two numeric
-foundations Solana programs juggle: integer lamport counts and fractional
-ratios. The lift `ofLamports` is exact. The reverse projection
-`toLamports?` returns `Option` because the Fraction's integer floor can
-exceed `u64::MAX`. -/
+`Lamports` is `UInt64`. The lift `ofLamports` is exact. The reverse projection
+`toLamports?` returns `Option` because the integer floor of a fraction can be negative or exceed
+`u64::MAX`. -/
 
 /-- Lift a `Lamports` (u64) to its exact `Fraction` encoding. -/
 def ofLamports (l : Lamports) : Fraction n := ↑l.toNat
 
 /-- Project a `Fraction` to `Lamports` by taking the integer floor.
-Returns `none` if the floor exceeds `u64::MAX`. -/
+Returns `none` if the floor is negative or exceeds `u64::MAX`. -/
 def toLamports? (f : Fraction n) : Option Lamports := do
   let k ← f.toIntFloor.toNat?
   if h : k < UInt64.size then some (UInt64.ofNatLT k h) else none
 
-/-- **Round-trip:** `(ofLamports l).toIntFloor = l.toNat`. The lift preserves the integer value
-exactly. -/
+/-- The lift preserves the integer value exactly. -/
 @[simp] theorem toIntFloor_ofLamports (l : Lamports) :
     (ofLamports l : Fraction n).toIntFloor = l.toNat := by
   apply toIntFloor_natCast _
@@ -326,7 +319,7 @@ theorem lt_intCast_toIntCeil_add_one (f : Fraction n) :
 `|f|`. -/
 theorem abs_intCast_toIntTrunc_le (f : Fraction n) :
     |(f.toIntTrunc : Fraction n)| ≤ |f| := by
-  unfold toIntTrunc --toRat
+  unfold toIntTrunc
   split_ifs with h
   · have h' : 0 ≤ (⌊toRat f⌋ : Fraction n) := by
       rw [← bits_le_bits, bits_zero, bits_intCast]
@@ -362,7 +355,8 @@ The exact product of two fixed-point numbers with `n` fractional bits has `2n` f
 so in general it does not land on the grid.
 Its value is `(f₁.bits * f₂.bits / 2^n) / 2^n`, where `f₁.bits * f₂.bits / 2^n` is in general
 not an integer, so it cannot be used as the underlying bits.
-Therefore, fixed-point multiplication rounds the value of the division to the nearest integer.
+Therefore, fixed-point multiplication rounds `f₁.bits * f₂.bits / 2^n` to an integer and uses it
+as the bits.
 
 We provide three definitions of multiplication, one for each rounding direction:
 `mulFloor` (`*↓`, toward -∞), `mulCeil` (`*↑`, toward ∞), and `mulTrunc` (`*₀`, toward 0).
