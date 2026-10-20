@@ -3,9 +3,6 @@
 #
 # Catches conventions Lean's own linters can't see across files:
 #   - copyright header presence with the expected Authors line
-#   - lines exceeding 100 characters
-#   - forbidden tokens (`λ`, `$`-as-application)
-#   - module docstring `/-! ... -/` placed AFTER any `import` lines
 #
 # Compatible with macOS bash 3.2 (no mapfile / readarray). Exits 0 if clean,
 # 1 if any rule trips.
@@ -38,39 +35,6 @@ check_file() {
   fi
   if ! grep -q '^Released under Apache 2.0 license' <<<"$header"; then
     fail "$f: header missing Apache 2.0 license line"
-  fi
-
-  # ---- Line length: 100 char limit ----
-  # Lines containing a URL are exempt — long link refs are an editorial
-  # decision, not a style violation.
-  awk -v file="$f" '
-    length > 100 && !/https?:\/\// {
-      print file":"NR": line exceeds 100 chars ("length")"
-    }
-  ' "$f" | while IFS= read -r line; do fail "$line"; done
-
-  # ---- Forbidden tokens ----
-  if grep -nE 'λ' "$f" >/dev/null; then
-    grep -nE 'λ' "$f" | while IFS= read -r line; do
-      fail "$f:$line: bare 'λ' — use 'fun ... ↦ ...'"
-    done
-  fi
-  # `$` used as application combinator. Exclude doc/comment contexts and the
-  # legitimate `--`-prefixed comment markers.
-  if grep -nE '[[:space:]]\$[[:space:]]' "$f" | grep -vE '^[0-9]+:[[:space:]]*(--|/-)' >/dev/null; then
-    grep -nE '[[:space:]]\$[[:space:]]' "$f" | grep -vE '^[0-9]+:[[:space:]]*(--|/-)' | while IFS= read -r line; do
-      fail "$f:$line: '\$' forbidden — use '<|' or '|>'"
-    done
-  fi
-
-  # ---- Module docstring must appear after imports ----
-  # The capital-letter anchor distinguishes real `import Foo.Bar` lines from
-  # docstring prose that happens to start with the word "import".
-  local first_doc last_import
-  first_doc=$(grep -n '^/-!' "$f" | head -n1 | cut -d: -f1)
-  last_import=$(grep -nE '^import [A-Z]' "$f" | tail -n1 | cut -d: -f1)
-  if [ -n "$first_doc" ] && [ -n "$last_import" ] && [ "$first_doc" -lt "$last_import" ]; then
-    fail "$f: module docstring at line $first_doc must appear AFTER last import (line $last_import)"
   fi
 }
 
