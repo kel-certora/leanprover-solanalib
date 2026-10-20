@@ -24,21 +24,21 @@ unbounded model, and the bounded on-chain representation is a separate refinemen
 * `Fraction n`: a binary fixed-point number with `n` fractional bits.
 * `Fraction.toRat`: the rational number that a fraction represents.
 * `Fraction.toIntFloor`, `Fraction.toIntCeil`, `Fraction.toIntTrunc`: rounding to an integer.
+* `Fraction.ofLamports`, `Fraction.toLamports?`: conversion from and to `Lamports`.
 * `Fraction.mulFloor` (`*↓`), `Fraction.mulCeil` (`*↑`), `Fraction.mulTrunc` (`*₀`):
   multiplication, one for each rounding direction.
 * `Fraction.divFloor` (`/↓`), `Fraction.divCeil` (`/↑`), `Fraction.divTrunc` (`/₀`):
   division, one for each rounding direction.
-* `Fraction.ofLamports`, `Fraction.toLamports?`: conversion from and to `Lamports`.
 
 ## Main statements
 
-* Correctness with respect to `ℚ`: `toRat` is a bijection between `Fraction n` and the multiples
-  of `1 / 2^n` in `ℚ` that preserves `+` and `≤` (`Fraction.toRatOrderAddIso`).
 * Algebra and order: `Fraction n` is an ordered additive commutative group
   (`AddCommGroup`, `LinearOrder`, `IsOrderedAddMonoid`).
-* Rounding to an integer:
+* Conversion to integers:
   * Casting an integer or a natural number to `Fraction n` and rounding it back gives the
     original number in every rounding direction (`Fraction.toIntFloor_intCast`).
+  * Converting `Lamports` to `Fraction n` with `ofLamports` and rounding it back with
+    `toIntFloor` gives the original number (`Fraction.toIntFloor_ofLamports`).
   * Rounding changes a fraction by less than `1`, in the stated direction
     (`Fraction.intCast_toIntFloor_le`, `Fraction.abs_sub_intCast_toIntTrunc_lt_one`).
 * Multiplication:
@@ -47,11 +47,14 @@ unbounded model, and the bounded on-chain representation is a separate refinemen
     because each one rounds.
   * Floor, truncation and ceiling are ordered (`Fraction.mulFloor_le_mulTrunc`,
     `Fraction.mulTrunc_le_mulCeil`).
-  * Each multiplication differs from the exact product by less than `1 / 2^n`, in the stated
-    direction (`Fraction.toRat_mulFloor_le`, `Fraction.lt_toRat_mulFloor_add`).
 * Division:
   * Floor, truncation and ceiling are ordered (`Fraction.divFloor_le_divTrunc`,
     `Fraction.divTrunc_le_divCeil`).
+* Correctness with respect to `ℚ`:
+  * `toRat` is a bijection between `Fraction n` and the multiples of `1 / 2^n` in `ℚ` that
+    preserves `+` and `≤` (`Fraction.toRatOrderAddIso`).
+  * Each multiplication differs from the exact product by less than `1 / 2^n`, in the stated
+    direction (`Fraction.toRat_mulFloor_le`, `Fraction.lt_toRat_mulFloor_add`).
   * For a nonzero divisor, each division differs from the exact quotient by less than `1 / 2^n`,
     in the stated direction (`Fraction.toRat_divFloor_le`, `Fraction.lt_toRat_divFloor_add`).
 
@@ -91,7 +94,7 @@ variable {n: ℕ}
 
 
 
-/-! ### Basic Definitions and Conversions -/
+/-! ### Basic definitions -/
 
 instance : Zero (Fraction n) := ⟨⟨0⟩⟩
 instance : One (Fraction n) := ⟨⟨2^n⟩⟩
@@ -179,20 +182,7 @@ instance : AddCommGroupWithOne (Fraction n) where
 instance : IsOrderedAddMonoid (Fraction n) where
   add_le_add_left f₁ f₂ h c := add_le_add_left f₁ f₂ c h
 
-/-!
-### Embedding into the rational numbers
-
-This section proves the correctness of `Fraction n` with respect to `ℚ`: it computes `+`, `-`
-and `≤` exactly as `ℚ` does, and it represents exactly the multiples of `1 / 2^n`.
-
-Each `f : Fraction n` stands for the rational number `f.toRat = f.bits / 2^n`.
-`toRatOrderAddIso` shows that `toRat` is a bijection between `Fraction n` and the multiples of
-`1 / 2^n` in `ℚ` that preserves `+` (and therefore `0`, negation and `-`) and `≤`.
-
-Every other rational number, such as `1 / 3`, has no representation as a `Fraction n` and must be
-rounded. Multiplication and division are therefore not exact. Their correctness with respect to
-`ℚ` is the bound on the rounding error in the `Precision loss` sections below.
--/
+/-! ### Conversion to the rational numbers -/
 
 /-- The rational number represented by a fraction `f`. -/
 def toRat (f: Fraction n) : ℚ := f.bits / 2^n
@@ -211,23 +201,7 @@ theorem toRat_nonneg (f : Fraction n) : 0 ≤ f.toRat ↔ 0 ≤ f := by
 @[simp] theorem toRat_add (f₁ f₂ : Fraction n) : (f₁ + f₂).toRat = f₁.toRat + f₂.toRat := by
   simp only [toRat, bits_add, Int.cast_add, add_div]
 
-/-- `toRat` as an order-preserving additive isomorphism from `Fraction n` onto the multiples of
-`1 / 2^n` in `ℚ`. -/
-def toRatOrderAddIso : Fraction n ≃+o AddSubgroup.zmultiples ((2 ^ n)⁻¹ : ℚ) where
-  toFun f := ⟨f.toRat, f.bits, by simp [toRat, zsmul_eq_mul, div_eq_mul_inv]⟩
-  invFun q := ⟨⌊(q : ℚ) * 2 ^ n⌋⟩
-  left_inv f := by ext; simp [toRat]
-  right_inv := by
-    intro ⟨q, hq⟩
-    simp[toRat]
-    apply AddSubgroup.mem_zmultiples_iff.mp at hq
-    obtain ⟨k, hk⟩ := hq
-    rw[←hk]
-    simp [zsmul_eq_mul, div_eq_mul_inv]
-  map_add' f₁ f₂ := by ext; simp
-  map_le_map_iff' := toRat_le_toRat
-
-/-! ### Rounding -/
+/-! ### Conversion to integers -/
 
 /-- The largest integer that is at most `f`, rounding toward -∞. -/
 def toIntFloor (f: Fraction n) : ℤ := ⌊f.toRat⌋
@@ -283,6 +257,29 @@ number in every rounding direction.
 
 @[simp] theorem toIntTrunc_natCast (k : ℕ) : (k : Fraction n).toIntTrunc = k := by
   simp [toIntTrunc, toRat]
+
+/-! #### Lamports
+
+`Lamports` (= `UInt64`) and `Fraction n` are the two numeric
+foundations Solana programs juggle: integer lamport counts and fractional
+ratios. The lift `ofLamports` is exact. The reverse projection
+`toLamports?` returns `Option` because the Fraction's integer floor can
+exceed `u64::MAX`. -/
+
+/-- Lift a `Lamports` (u64) to its exact `Fraction` encoding. -/
+def ofLamports (l : Lamports) : Fraction n := ↑l.toNat
+
+/-- Project a `Fraction` to `Lamports` by taking the integer floor.
+Returns `none` if the floor exceeds `u64::MAX`. -/
+def toLamports? (f : Fraction n) : Option Lamports := do
+  let k ← f.toIntFloor.toNat?
+  if h : k < UInt64.size then some (UInt64.ofNatLT k h) else none
+
+/-- **Round-trip:** `(ofLamports l).toIntFloor = l.toNat`. The lift preserves the integer value
+exactly. -/
+@[simp] theorem toIntFloor_ofLamports (l : Lamports) :
+    (ofLamports l : Fraction n).toIntFloor = l.toNat := by
+  apply toIntFloor_natCast _
 
 /-! #### Rounding error
 
@@ -357,7 +354,6 @@ theorem abs_sub_intCast_toIntTrunc_lt_one (f : Fraction n) :
     rw [Int.cast_sub, Int.cast_one] at hlo
     exact ⟨by rw [lt_sub_iff_add_lt, neg_add_eq_sub]; exact hlo,
       lt_of_le_of_lt (sub_nonpos.mpr hhi) h1⟩
-
 
 
 /-! ### Multiplication
@@ -470,90 +466,6 @@ theorem mulTrunc_le_mulCeil (f₁ f₂ : Fraction n) : f₁ *₀ f₂ ≤ f₁ *
         Int.sign_eq_one_of_pos (by positivity : (0 : ℤ) < 2 ^ n)]
   · conv_lhs => rw [← Int.neg_neg p, Int.neg_tdiv, Int.tdiv_eq_ediv_of_nonneg (by omega)]
     simp [Int.fdiv_eq_ediv]
-
-
-/-! #### Precision loss
-
-Each multiplication differs from the exact product `f₁.toRat * f₂.toRat` by less than `1 / 2^n`,
-the distance between two neighboring fixed-point numbers.
-`mulFloor` is at most the exact product, `mulCeil` is at least the exact product, and the absolute
-value of `mulTrunc` is at most the absolute value of the exact product.
--/
-
-/-- `f₁ *↓ f₂` is at most the exact product. -/
-theorem toRat_mulFloor_le (f₁ f₂ : Fraction n) :
-    (f₁ *↓ f₂).toRat ≤ f₁.toRat * f₂.toRat := by
-  simp only [toRat, mulFloor, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, true_or,
-    ↓reduceIte, _root_.sub_zero]
-  field_simp
-  norm_cast
-  simp [Int.ediv_mul_le]
-
-/-- The exact product is less than `f₁ *↓ f₂ + 1 / 2 ^ n`. -/
-theorem lt_toRat_mulFloor_add (f₁ f₂ : Fraction n) :
-    f₁.toRat * f₂.toRat < (f₁ *↓ f₂).toRat + 1 / 2 ^ n := by
-  simp only [toRat, mulFloor, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, true_or,
-    ↓reduceIte, _root_.sub_zero, one_div]
-  field_simp
-  norm_cast
-  conv => rhs; rw [Int.mul_comm]
-  apply Int.lt_ediv_add_one_mul_self (H := by simp)
-
-/-- `f₁ *↑ f₂` is at least the exact product. -/
-theorem le_toRat_mulCeil (f₁ f₂ : Fraction n) :
-    f₁.toRat * f₂.toRat ≤ (f₁ *↑ f₂).toRat := by
-  rw [mulCeil_eq]
-  simp only [toRat, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, dvd_neg, true_or,
-    ↓reduceIte, _root_.sub_zero, Int.cast_neg]
-  field_simp
-  norm_cast
-  rw [le_neg, Int.mul_comm]
-  apply Int.ediv_mul_le (H := by simp)
-
-/-- `f₁ *↑ f₂ - 1 / 2 ^ n` is less than the exact product. -/
-theorem toRat_mulCeil_sub_lt (f₁ f₂ : Fraction n) :
-    (f₁ *↑ f₂).toRat - 1 / 2 ^ n < f₁.toRat * f₂.toRat := by
-  rw [mulCeil_eq]
-  simp only [toRat, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, dvd_neg, true_or,
-    ↓reduceIte, _root_.sub_zero, Int.cast_neg, one_div]
-  field_simp
-  norm_cast
-  rw [← neg_add', mul_neg, neg_lt]
-  conv => rhs; rw [Int.mul_comm]
-  apply Int.lt_ediv_add_one_mul_self (H := by simp)
-
-/-- The absolute value of `f₁ *₀ f₂` is at most the absolute value of the exact product. -/
-theorem abs_toRat_mulTrunc_le (f₁ f₂ : Fraction n) :
-    |(f₁ *₀ f₂).toRat| ≤ |f₁.toRat * f₂.toRat| := by
-  rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
-  · rw [mulTrunc_eq_mulFloor_of_nonneg h]
-    apply abs_le_abs_of_nonneg _ (toRat_mulFloor_le f₁ f₂)
-    unfold toRat mulFloor
-    apply div_nonneg _ (by positivity)
-    rw [Int.fdiv_eq_ediv, if_pos (Or.inl (by positivity)), Int.sub_zero]
-    exact_mod_cast Int.ediv_nonneg h (by positivity)
-  · rw [mulTrunc_eq_mulCeil_of_neg h]
-    apply abs_le_abs_of_nonpos _ (le_toRat_mulCeil f₁ f₂)
-    rw [mulCeil_eq]
-    unfold toRat
-    apply div_nonpos_of_nonpos_of_nonneg _ (by positivity)
-    rw [Int.fdiv_eq_ediv, if_pos (Or.inl (by positivity)), Int.sub_zero]
-    have := Int.ediv_nonneg (a := -(f₁.bits * f₂.bits)) (b := 2 ^ n) (by linarith) (by positivity)
-    exact_mod_cast neg_nonpos.mpr this
-
-/-- `f₁ *₀ f₂` differs from the exact product by less than `1 / 2 ^ n`. -/
-theorem abs_sub_toRat_mulTrunc_lt (f₁ f₂ : Fraction n) :
-    |f₁.toRat * f₂.toRat - (f₁ *₀ f₂).toRat| < 1 / 2 ^ n := by
-  have h0 : (0 : ℚ) < 1 / 2 ^ n := by positivity
-  rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
-  · have h1 := toRat_mulFloor_le f₁ f₂
-    have h2 := lt_toRat_mulFloor_add f₁ f₂
-    rw [mulTrunc_eq_mulFloor_of_nonneg h, abs_lt]
-    constructor <;> linarith
-  · have h1 := le_toRat_mulCeil f₁ f₂
-    have h2 := toRat_mulCeil_sub_lt f₁ f₂
-    rw [mulTrunc_eq_mulCeil_of_neg h, abs_lt]
-    constructor <;> linarith
 
 
 /-! ### Division
@@ -689,7 +601,122 @@ theorem divTrunc_le_divCeil (f₁ f₂ : Fraction n) : f₁ /₀ f₂ ≤ f₁ /
     exact divFloor_le_divCeil f₁ f₂
   · exact (divTrunc_eq_divCeil_of_neg h).le
 
-/-! #### Precision loss
+/-!
+### Embedding into the rational numbers
+
+This section proves the correctness of `Fraction n` with respect to `ℚ`: it computes `+`, `-`
+and `≤` exactly as `ℚ` does, and it represents exactly the multiples of `1 / 2^n`.
+
+Each `f : Fraction n` stands for the rational number `f.toRat = f.bits / 2^n`.
+`toRatOrderAddIso` shows that `toRat` is a bijection between `Fraction n` and the multiples of
+`1 / 2^n` in `ℚ` that preserves `+` (and therefore `0`, negation and `-`) and `≤`.
+
+Every other rational number, such as `1 / 3`, has no representation as a `Fraction n` and must be
+rounded. Multiplication and division are therefore not exact. Their correctness with respect to
+`ℚ` is the bound on the rounding error in the `Precision loss` sections below.
+-/
+
+/-- `toRat` as an order-preserving additive isomorphism from `Fraction n` onto the multiples of
+`1 / 2^n` in `ℚ`. -/
+def toRatOrderAddIso : Fraction n ≃+o AddSubgroup.zmultiples ((2 ^ n)⁻¹ : ℚ) where
+  toFun f := ⟨f.toRat, f.bits, by simp [toRat, zsmul_eq_mul, div_eq_mul_inv]⟩
+  invFun q := ⟨⌊(q : ℚ) * 2 ^ n⌋⟩
+  left_inv f := by ext; simp [toRat]
+  right_inv := by
+    intro ⟨q, hq⟩
+    simp[toRat]
+    apply AddSubgroup.mem_zmultiples_iff.mp at hq
+    obtain ⟨k, hk⟩ := hq
+    rw[←hk]
+    simp [zsmul_eq_mul, div_eq_mul_inv]
+  map_add' f₁ f₂ := by ext; simp
+  map_le_map_iff' := toRat_le_toRat
+
+/-! #### Precision loss of multiplication
+
+Each multiplication differs from the exact product `f₁.toRat * f₂.toRat` by less than `1 / 2^n`,
+the distance between two neighboring fixed-point numbers.
+`mulFloor` is at most the exact product, `mulCeil` is at least the exact product, and the absolute
+value of `mulTrunc` is at most the absolute value of the exact product.
+-/
+
+/-- `f₁ *↓ f₂` is at most the exact product. -/
+theorem toRat_mulFloor_le (f₁ f₂ : Fraction n) :
+    (f₁ *↓ f₂).toRat ≤ f₁.toRat * f₂.toRat := by
+  simp only [toRat, mulFloor, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, true_or,
+    ↓reduceIte, _root_.sub_zero]
+  field_simp
+  norm_cast
+  simp [Int.ediv_mul_le]
+
+/-- The exact product is less than `f₁ *↓ f₂ + 1 / 2 ^ n`. -/
+theorem lt_toRat_mulFloor_add (f₁ f₂ : Fraction n) :
+    f₁.toRat * f₂.toRat < (f₁ *↓ f₂).toRat + 1 / 2 ^ n := by
+  simp only [toRat, mulFloor, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, true_or,
+    ↓reduceIte, _root_.sub_zero, one_div]
+  field_simp
+  norm_cast
+  conv => rhs; rw [Int.mul_comm]
+  apply Int.lt_ediv_add_one_mul_self (H := by simp)
+
+/-- `f₁ *↑ f₂` is at least the exact product. -/
+theorem le_toRat_mulCeil (f₁ f₂ : Fraction n) :
+    f₁.toRat * f₂.toRat ≤ (f₁ *↑ f₂).toRat := by
+  rw [mulCeil_eq]
+  simp only [toRat, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, dvd_neg, true_or,
+    ↓reduceIte, _root_.sub_zero, Int.cast_neg]
+  field_simp
+  norm_cast
+  rw [le_neg, Int.mul_comm]
+  apply Int.ediv_mul_le (H := by simp)
+
+/-- `f₁ *↑ f₂ - 1 / 2 ^ n` is less than the exact product. -/
+theorem toRat_mulCeil_sub_lt (f₁ f₂ : Fraction n) :
+    (f₁ *↑ f₂).toRat - 1 / 2 ^ n < f₁.toRat * f₂.toRat := by
+  rw [mulCeil_eq]
+  simp only [toRat, Int.fdiv_eq_ediv, Nat.ofNat_nonneg, pow_nonneg, dvd_neg, true_or,
+    ↓reduceIte, _root_.sub_zero, Int.cast_neg, one_div]
+  field_simp
+  norm_cast
+  rw [← neg_add', mul_neg, neg_lt]
+  conv => rhs; rw [Int.mul_comm]
+  apply Int.lt_ediv_add_one_mul_self (H := by simp)
+
+/-- The absolute value of `f₁ *₀ f₂` is at most the absolute value of the exact product. -/
+theorem abs_toRat_mulTrunc_le (f₁ f₂ : Fraction n) :
+    |(f₁ *₀ f₂).toRat| ≤ |f₁.toRat * f₂.toRat| := by
+  rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
+  · rw [mulTrunc_eq_mulFloor_of_nonneg h]
+    apply abs_le_abs_of_nonneg _ (toRat_mulFloor_le f₁ f₂)
+    unfold toRat mulFloor
+    apply div_nonneg _ (by positivity)
+    rw [Int.fdiv_eq_ediv, if_pos (Or.inl (by positivity)), Int.sub_zero]
+    exact_mod_cast Int.ediv_nonneg h (by positivity)
+  · rw [mulTrunc_eq_mulCeil_of_neg h]
+    apply abs_le_abs_of_nonpos _ (le_toRat_mulCeil f₁ f₂)
+    rw [mulCeil_eq]
+    unfold toRat
+    apply div_nonpos_of_nonpos_of_nonneg _ (by positivity)
+    rw [Int.fdiv_eq_ediv, if_pos (Or.inl (by positivity)), Int.sub_zero]
+    have := Int.ediv_nonneg (a := -(f₁.bits * f₂.bits)) (b := 2 ^ n) (by linarith) (by positivity)
+    exact_mod_cast neg_nonpos.mpr this
+
+/-- `f₁ *₀ f₂` differs from the exact product by less than `1 / 2 ^ n`. -/
+theorem abs_sub_toRat_mulTrunc_lt (f₁ f₂ : Fraction n) :
+    |f₁.toRat * f₂.toRat - (f₁ *₀ f₂).toRat| < 1 / 2 ^ n := by
+  have h0 : (0 : ℚ) < 1 / 2 ^ n := by positivity
+  rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
+  · have h1 := toRat_mulFloor_le f₁ f₂
+    have h2 := lt_toRat_mulFloor_add f₁ f₂
+    rw [mulTrunc_eq_mulFloor_of_nonneg h, abs_lt]
+    constructor <;> linarith
+  · have h1 := le_toRat_mulCeil f₁ f₂
+    have h2 := toRat_mulCeil_sub_lt f₁ f₂
+    rw [mulTrunc_eq_mulCeil_of_neg h, abs_lt]
+    constructor <;> linarith
+
+
+/-! #### Precision loss of division
 
 For `f₂ ≠ 0`, each division differs from the exact quotient `f₁.toRat / f₂.toRat` by less than
 `1 / 2^n`, the distance between two neighboring fixed-point numbers.
@@ -792,30 +819,6 @@ theorem abs_sub_toRat_divTrunc_lt (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
     have h2 := toRat_divCeil_sub_lt f₁ f₂ h₂
     rw [divTrunc_eq_divCeil_of_neg (mul_neg_of_neg_of_pos h hb), abs_lt]
     constructor <;> linarith
-
-
-/-! ### Bridging to `Lamports`
-
-`Lamports` (= `UInt64`) and `Fraction n` are the two numeric
-foundations Solana programs juggle: integer lamport counts and fractional
-ratios. The lift `ofLamports` is exact. The reverse projection
-`toLamports?` returns `Option` because the Fraction's integer floor can
-exceed `u64::MAX`. -/
-
-/-- Lift a `Lamports` (u64) to its exact `Fraction` encoding. -/
-def ofLamports (l : Lamports) : Fraction n := ↑l.toNat
-
-/-- Project a `Fraction` to `Lamports` by taking the integer floor.
-Returns `none` if the floor exceeds `u64::MAX`. -/
-def toLamports? (f : Fraction n) : Option Lamports := do
-  let k ← f.toIntFloor.toNat?
-  if h : k < UInt64.size then some (UInt64.ofNatLT k h) else none
-
-/-- **Round-trip:** `(ofLamports l).toIntFloor = l.toNat`. The lift preserves the integer value
-exactly. -/
-@[simp] theorem toIntFloor_ofLamports (l : Lamports) :
-    (ofLamports l : Fraction n).toIntFloor = l.toNat := by
-  apply toIntFloor_natCast _
 
 
 end Fraction
