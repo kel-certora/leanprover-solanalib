@@ -32,8 +32,8 @@ unbounded model, and the bounded on-chain representation is a separate refinemen
 
 ## Main statements
 
-* Embedding into `ℚ`: a fraction represent exactly one rational number and
-  different fractions represent different rational numbers (`Fraction.toRat_injective`).
+* Correctness with respect to `ℚ`: `toRat` is a bijection between `Fraction n` and the multiples
+  of `1 / 2^n` in `ℚ` that preserves `+` and `≤` (`Fraction.toRatOrderAddIso`).
 * Algebra and order: `Fraction n` is an ordered additive commutative group
   (`AddCommGroup`, `LinearOrder`, `IsOrderedAddMonoid`).
 * Rounding to an integer:
@@ -91,46 +91,6 @@ variable {n: ℕ}
 
 
 
-
-/-!
-### Embedding into the rational numbers
-
-Each `f : Fraction n` represents exactly one rational number, `f.toRat = f.bits / 2^n`.
-`toRat_injective` says that two fractions are equal exactly when their rational values are equal.
-`range_toRat` says that the values are exactly the rationals `k / 2^n` with `k : ℤ`.
-Together, `toRat` is a one-to-one correspondence between `Fraction n` and these rationals, and a
-rational outside this set has no representation as a `Fraction n`.
--/
-
-/-- The rational number represented by a fraction `f`. -/
-def toRat (f: Fraction n) : ℚ := f.bits / 2^n
-
-/-- Two fractions with the same rational value are equal. -/
-theorem toRat_injective : Function.Injective (toRat (n:=n)) := by
-  intro f₁ f₂ h
-  ext
-  simpa [toRat] using h
-
-/-- The rational values of `Fraction n` are exactly the rationals `k / 2^n` with `k : ℤ`. -/
-theorem range_toRat: Set.range (toRat (n := n)) = {q: ℚ | ∃ k : ℤ, q = k / 2 ^ n} := by
-  ext p
-  constructor
-  · simp [toRat]
-    intro f hf
-    use f.bits
-    simp [hf]
-  · intro hp
-    obtain ⟨k, hk⟩ := hp
-    simp[toRat]
-    use ⟨k⟩
-    simp[hk]
-
-
-
-instance : (CoeOut (Fraction n)) ℚ  where
-  coe := fun f ↦ f.toRat
-
-
 /-! ### Basic Definitions and Conversions -/
 
 instance : Zero (Fraction n) := ⟨⟨0⟩⟩
@@ -164,10 +124,6 @@ instance : LinearOrder (Fraction n) :=
 @[simp] theorem bits_le_bits (f₁ f₂: Fraction n) : f₁.bits ≤ f₂.bits ↔ f₁ ≤ f₂ := by rfl
 @[simp] theorem bits_lt_bits (f₁ f₂: Fraction n) : f₁.bits < f₂.bits ↔ f₁ < f₂ := by rfl
 
-theorem toRat_nonneg (f : Fraction n) : 0 ≤ f.toRat ↔ 0 ≤ f := by
-  rw [← bits_le_bits, bits_zero, toRat, le_div_iff₀ (by positivity), zero_mul]
-  norm_cast
-
 
 
 /-! ### Addition, Negation, and Subtraction
@@ -190,10 +146,6 @@ theorem add_comm (f₁ f₂ : Fraction n) : f₁ + f₂ = f₂ + f₁ := by ext;
 
 theorem add_le_add_left (f₁ f₂: Fraction n) (f: Fraction n) (h: f₁ ≤ f₂): f₁ + f ≤ f₂ + f := by
   rw[← bits_le_bits]; simp[bits_le_bits, h]
-
-@[simp] theorem toRat_add (f₁ f₂ : Fraction n) : (f₁ + f₂).toRat = f₁.toRat + f₂.toRat := by
-  simp only [toRat, bits_add, Int.cast_add, add_div]
-
 
 
 instance : Sub (Fraction n) where sub (f₁ f₂) := ⟨f₁.bits - f₂.bits⟩
@@ -226,6 +178,54 @@ instance : AddCommGroupWithOne (Fraction n) where
 
 instance : IsOrderedAddMonoid (Fraction n) where
   add_le_add_left f₁ f₂ h c := add_le_add_left f₁ f₂ c h
+
+/-!
+### Embedding into the rational numbers
+
+This section proves the correctness of `Fraction n` with respect to `ℚ`: it computes `+`, `-`
+and `≤` exactly as `ℚ` does, and it represents exactly the multiples of `1 / 2^n`.
+
+Each `f : Fraction n` stands for the rational number `f.toRat = f.bits / 2^n`.
+`toRatOrderAddIso` shows that `toRat` is a bijection between `Fraction n` and the multiples of
+`1 / 2^n` in `ℚ` that preserves `+` (and therefore `0`, negation and `-`) and `≤`.
+
+Every other rational number, such as `1 / 3`, has no representation as a `Fraction n` and must be
+rounded. Multiplication and division are therefore not exact. Their correctness with respect to
+`ℚ` is the bound on the rounding error in the `Precision loss` sections below.
+-/
+
+/-- The rational number represented by a fraction `f`. -/
+def toRat (f: Fraction n) : ℚ := f.bits / 2^n
+
+instance : (CoeOut (Fraction n)) ℚ  where
+  coe := fun f ↦ f.toRat
+
+theorem toRat_nonneg (f : Fraction n) : 0 ≤ f.toRat ↔ 0 ≤ f := by
+  rw [← bits_le_bits, bits_zero, toRat, le_div_iff₀ (by positivity), zero_mul]
+  norm_cast
+
+@[simp] theorem toRat_le_toRat {f₁ f₂ : Fraction n} : f₁.toRat ≤ f₂.toRat ↔ f₁ ≤ f₂ := by
+  rw [← bits_le_bits, toRat, toRat, div_le_div_iff_of_pos_right (by positivity)]
+  norm_cast
+
+@[simp] theorem toRat_add (f₁ f₂ : Fraction n) : (f₁ + f₂).toRat = f₁.toRat + f₂.toRat := by
+  simp only [toRat, bits_add, Int.cast_add, add_div]
+
+/-- `toRat` as an order-preserving additive isomorphism from `Fraction n` onto the multiples of
+`1 / 2^n` in `ℚ`. -/
+def toRatOrderAddIso : Fraction n ≃+o AddSubgroup.zmultiples ((2 ^ n)⁻¹ : ℚ) where
+  toFun f := ⟨f.toRat, f.bits, by simp [toRat, zsmul_eq_mul, div_eq_mul_inv]⟩
+  invFun q := ⟨⌊(q : ℚ) * 2 ^ n⌋⟩
+  left_inv f := by ext; simp [toRat]
+  right_inv := by
+    intro ⟨q, hq⟩
+    simp[toRat]
+    apply AddSubgroup.mem_zmultiples_iff.mp at hq
+    obtain ⟨k, hk⟩ := hq
+    rw[←hk]
+    simp [zsmul_eq_mul, div_eq_mul_inv]
+  map_add' f₁ f₂ := by ext; simp
+  map_le_map_iff' := toRat_le_toRat
 
 /-! ### Rounding -/
 
