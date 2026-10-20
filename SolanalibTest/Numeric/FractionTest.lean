@@ -9,8 +9,9 @@ import Solanalib.Numeric.Fraction
 # Regression tests for `Solanalib.Numeric.Fraction`
 
 Pins the spec-layer behaviour of the Q68.60 fixed-point shape:
-constants, basic arithmetic, integer round-trip via `fromNat` /
-`toFloor`, the monoid theorems, ordering, and `sub`/`add` cancellation.
+constants, integer round-trip via the cast and `toIntFloor`, the
+additive group laws, multiplication and division by `1`, ordering,
+and `sub`/`add` cancellation.
 -/
 
 namespace SolanalibTest.Numeric.Fraction
@@ -19,77 +20,60 @@ open Solanalib
 
 /-! ## Constants and conversions -/
 
-/-- `zero` and `one` are distinct. -/
-example : Fraction.zero ≠ Fraction.one := by decide
+/-- `0` and `1` are distinct. -/
+example : (0 : Q68_60) ≠ 1 := fun h => by simpa using congrArg Fraction.bits h
 
-/-- `fromNat n |>.toFloor = n` — integers round-trip cleanly. -/
-example (n : Nat) : (Fraction.fromNat n).toFloor = n :=
-  Fraction.toFloor_fromNat n
+/-- Casting a natural number and taking `toIntFloor` round-trips cleanly. -/
+example (k : Nat) : (k : Q68_60).toIntFloor = k :=
+  Fraction.toIntFloor_natCast k
 
-/-- `fromNat 0 = zero`. -/
-example : Fraction.fromNat 0 = Fraction.zero := by
-  ext
-  show 0 * Fraction.scale = 0
-  exact Nat.zero_mul _
+/-- The cast of `0` is `0`. -/
+example : ((0 : Nat) : Q68_60) = 0 := Nat.cast_zero
 
-/-- `fromNat 1 = one`. -/
-example : Fraction.fromNat 1 = Fraction.one := by
-  ext
-  show 1 * Fraction.scale = Fraction.scale
-  exact Nat.one_mul _
+/-- The cast of `1` is `1`. -/
+example : ((1 : Nat) : Q68_60) = 1 := Nat.cast_one
 
-/-! ## Monoid theorems -/
+/-! ## Additive group and multiplicative identity -/
 
-example : Fraction.zero.add Fraction.one = Fraction.one :=
-  Fraction.zero_add Fraction.one
+example : (0 : Q68_60) + 1 = 1 := zero_add 1
 
-example : Fraction.one.add Fraction.zero = Fraction.one :=
-  Fraction.add_zero Fraction.one
+example : (1 : Q68_60) + 0 = 1 := add_zero 1
 
-example (a b : Fraction) : a.add b = b.add a :=
-  Fraction.add_comm a b
+example (a b : Q68_60) : a + b = b + a := add_comm a b
 
-example : Fraction.one.mul Fraction.one = Fraction.one :=
-  Fraction.mul_one Fraction.one
+example : Fraction.mulFloor (1 : Q68_60) 1 = 1 := Fraction.mulFloor_one 1
 
-example (a : Fraction) : Fraction.one.mul a = a :=
-  Fraction.one_mul a
+example (a : Q68_60) : Fraction.mulFloor 1 a = a := Fraction.one_mulFloor a
 
 /-! ## Ordering -/
 
-example (a : Fraction) : Fraction.zero ≤ a :=
-  Fraction.zero_le a
+example : (0 : Q68_60) ≤ 1 := by norm_num [← Fraction.bits_le_bits]
 
-example (a : Fraction) : a ≤ a := Fraction.le_refl a
+/-- `Fraction` is signed: `-1` is below `0`. -/
+example : (-1 : Q68_60) < 0 := by norm_num [← Fraction.bits_lt_bits]
 
-example {a b c : Fraction} (h₁ : a ≤ b) (h₂ : b ≤ c) : a ≤ c :=
-  Fraction.le_trans h₁ h₂
+example (a : Q68_60) : a ≤ a := le_refl a
 
-example : Fraction.zero ≤ Fraction.one := by decide
+example {a b c : Q68_60} (h₁ : a ≤ b) (h₂ : b ≤ c) : a ≤ c :=
+  le_trans h₁ h₂
 
-/-! ## Subtraction (with underflow precondition) -/
+/-! ## Subtraction -/
 
-/-- `(a - b) + b = a` whenever the subtraction is well-defined. -/
-example (a b : Fraction) (h : b.bits ≤ a.bits) : (a.sub b h).add b = a :=
-  Fraction.sub_add a b h
+/-- `(a - b) + b = a`. -/
+example (a b : Q68_60) : a - b + b = a := sub_add_cancel a b
 
-/-- Concrete: `one − one = zero`. -/
-example :
-    Fraction.one.sub Fraction.one (Nat.le_refl _) = Fraction.zero := by
-  ext
-  show Fraction.scale - Fraction.scale = 0
-  exact Nat.sub_self _
+/-- Concrete: `1 - 1 = 0`. -/
+example : (1 : Q68_60) - 1 = 0 := sub_self 1
 
 /-! ## Division -/
 
-/-- `div_one` returns the dividend unchanged. -/
-example (a : Fraction) : a.div Fraction.one Fraction.one_bits_ne_zero = a :=
-  Fraction.div_one a
+/-- Division by `1` returns the dividend unchanged. -/
+example (a : Q68_60) : Fraction.divFloor a 1 = a := Fraction.divFloor_one a
 
 /-! ## Lamports ↔ Fraction bridge -/
 
-/-- Lamports → Fraction → Nat round-trip preserves the integer value. -/
-example (l : Lamports) : (Fraction.ofLamports l).toFloor = l.toNat :=
-  Fraction.toFloor_ofLamports l
+/-- Lamports → Fraction → integer round-trip preserves the value. -/
+example (l : Lamports) : (Fraction.ofLamports l : Q68_60).toIntFloor = l.toNat :=
+  Fraction.toIntFloor_ofLamports l
 
 end SolanalibTest.Numeric.Fraction

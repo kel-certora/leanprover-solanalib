@@ -28,14 +28,12 @@ open Solanalib Solanalib.Finance
 /-! ## Concrete: a 2× multiplier doubles the balance each period -/
 
 /-- A 2.0 multiplier as a Q68.60 Fraction. -/
-def double : Fraction := Fraction.fromNat 2
+def double : Q68_60 := ⟨2 * 2 ^ 60⟩
 
 /-- The multiplier is at least 1.0. -/
-theorem double_ge_one : Fraction.one ≤ double := by
-  show Fraction.one.bits ≤ double.bits
-  rw [Fraction.one_bits]
-  show Fraction.scale ≤ 2 * Fraction.scale
-  exact Nat.le_mul_of_pos_left _ (by decide)
+theorem double_ge_one : (1 : Q68_60) ≤ double := by
+  rw [← Fraction.bits_le_bits]
+  norm_num [double]
 
 example : CompoundInterest.balance 100 double 0 = 100 := rfl
 example : CompoundInterest.balance 100 double 1 = 200 := by decide
@@ -44,7 +42,7 @@ example : CompoundInterest.balance 100 double 3 = 800 := by decide
 /-! ## Unit multiplier: balance is constant -/
 
 example (n : Nat) :
-    CompoundInterest.balance 100 Fraction.one n = 100 :=
+    CompoundInterest.balance 100 (1 : Q68_60) n = 100 :=
   CompoundInterest.balance_at_one_multiplier 100 n
 
 /-! ## Composition: balance is monotone via the MonotoneSequence bridge -/
