@@ -13,6 +13,8 @@ and runs it through `bpfInterp`, confirming the lift → decode → execute path
 composes: the emitted bytes decode and evaluate to the expected result.
 -/
 
+set_option linter.style.nativeDecide false
+
 namespace SolanalibTest.SBPF.Lift
 
 open Solanalib.SBPF

@@ -29,13 +29,13 @@ example (n : Nat) : (Fraction.fromNat n).toFloor = n :=
 /-- `fromNat 0 = zero`. -/
 example : Fraction.fromNat 0 = Fraction.zero := by
   ext
-  show 0 * Fraction.scale = 0
+  change 0 * Fraction.scale = 0
   exact Nat.zero_mul _
 
 /-- `fromNat 1 = one`. -/
 example : Fraction.fromNat 1 = Fraction.one := by
   ext
-  show 1 * Fraction.scale = Fraction.scale
+  change 1 * Fraction.scale = Fraction.scale
   exact Nat.one_mul _
 
 /-! ## Monoid theorems -/
@@ -77,7 +77,7 @@ example (a b : Fraction) (h : b.bits ≤ a.bits) : (a.sub b h).add b = a :=
 example :
     Fraction.one.sub Fraction.one (Nat.le_refl _) = Fraction.zero := by
   ext
-  show Fraction.scale - Fraction.scale = 0
+  change Fraction.scale - Fraction.scale = 0
   exact Nat.sub_self _
 
 /-! ## Division -/

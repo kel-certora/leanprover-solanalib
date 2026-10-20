@@ -58,7 +58,7 @@ guards fire, the formula `penalty_bps * time_remaining / total_duration`
 is exactly `LinearDecay.value`. -/
 example (tBegin tNow tEnd peak : Nat)
     (h_now_in_window_begin : tBegin ≤ tNow)
-    (h_now_in_window_end   : tNow < tEnd) :
+    (h_now_in_window_end : tNow < tEnd) :
     value tBegin tNow tEnd peak = peak * (tEnd - tNow) / (tEnd - tBegin) := by
   unfold value
   have h_not_before : ¬ tNow < tBegin := Nat.not_lt.mpr h_now_in_window_begin

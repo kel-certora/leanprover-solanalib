@@ -84,7 +84,7 @@ theorem balance_at_one_multiplier (principal : Nat) (n : Nat) :
   induction n with
   | zero => rfl
   | succ k ih =>
-    show balance principal Fraction.one k * Fraction.one.bits
+    change balance principal Fraction.one k * Fraction.one.bits
             / Fraction.scale = principal
     rw [ih, Fraction.one_bits, Nat.mul_div_cancel _ Fraction.scale_pos]
 
@@ -93,7 +93,7 @@ balance never decreases from one period to the next. -/
 theorem balance_succ_ge (principal : Nat) (multiplier : Fraction)
     (h : Fraction.one ≤ multiplier) (n : Nat) :
     balance principal multiplier n ≤ balance principal multiplier (n + 1) := by
-  show balance principal multiplier n
+  change balance principal multiplier n
         ≤ balance principal multiplier n * multiplier.bits / Fraction.scale
   -- `Fraction.one ≤ multiplier` reduces to `Fraction.scale ≤ multiplier.bits`
   -- via the `LE Fraction` instance and `one_bits`.

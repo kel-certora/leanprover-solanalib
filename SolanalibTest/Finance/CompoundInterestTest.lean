@@ -32,9 +32,9 @@ def double : Fraction := Fraction.fromNat 2
 
 /-- The multiplier is at least 1.0. -/
 theorem double_ge_one : Fraction.one ≤ double := by
-  show Fraction.one.bits ≤ double.bits
+  change Fraction.one.bits ≤ double.bits
   rw [Fraction.one_bits]
-  show Fraction.scale ≤ 2 * Fraction.scale
+  change Fraction.scale ≤ 2 * Fraction.scale
   exact Nat.le_mul_of_pos_left _ (by decide)
 
 example : CompoundInterest.balance 100 double 0 = 100 := rfl

@@ -124,10 +124,10 @@ theorem remaining_le_capacity (c : WithdrawalCap) (now : Timestamp)
     (h_inv : Invariant c) (h_enabled : c.intervalSeconds.toNat ≠ 0) :
     c.remaining now ≤ c.capacity := by
   unfold remaining
-  simp [h_enabled]
+  simp only [h_enabled, ↓reduceIte]
   by_cases h : c.IsElapsed now
-  · simp [h]                              -- elapsed: remaining = capacity
-  · simp [h]                              -- mid-window: capacity − current ≤ capacity
+  · simp [h] -- elapsed: remaining = capacity
+  · simp only [h, ↓reduceIte] -- mid-window: capacity − current ≤ capacity
     rw [UInt64.le_iff_toNat_le, UInt64.toNat_sub_of_le _ _ h_inv]
     exact Nat.sub_le _ _
 
@@ -141,20 +141,20 @@ theorem tryAdd_preserves_invariant
   unfold tryAdd at h_ok
   unfold Invariant
   by_cases h_disabled : c.intervalSeconds.toNat = 0
-  · simp [h_disabled] at h_ok
+  · simp only [h_disabled, ↓reduceIte, TryAdd.ok.injEq] at h_ok
     rw [← h_ok]; exact h_inv
-  · simp [h_disabled] at h_ok
+  · simp only [h_disabled, ↓reduceIte] at h_ok
     by_cases h_elapsed : c.IsElapsed now
-    · simp [h_elapsed] at h_ok
+    · simp only [h_elapsed, ↓reduceIte] at h_ok
       by_cases h_fits : amount.toNat ≤ c.capacity.toNat
-      · simp [h_fits] at h_ok
+      · simp only [h_fits, ↓reduceIte, TryAdd.ok.injEq] at h_ok
         rw [← h_ok]
         -- Goal: amount ≤ capacity (UInt64). From h_fits via le_iff_toNat_le.
         rwa [UInt64.le_iff_toNat_le]
       · simp [h_fits] at h_ok
-    · simp [h_elapsed] at h_ok
+    · simp only [h_elapsed, ↓reduceIte] at h_ok
       by_cases h_fits : c.current.toNat + amount.toNat ≤ c.capacity.toNat
-      · simp [h_fits] at h_ok
+      · simp only [h_fits, ↓reduceIte, TryAdd.ok.injEq] at h_ok
         rw [← h_ok]
         -- Goal: c.current + amount ≤ c.capacity (UInt64).
         rw [UInt64.le_iff_toNat_le]
@@ -173,7 +173,8 @@ theorem tryAdd_rejects_over_cap_midwindow
     (h_over : c.current.toNat + amount.toNat > c.capacity.toNat) :
     c.tryAdd amount now = TryAdd.capReached := by
   unfold tryAdd
-  simp [h_enabled, h_not_elapsed]
+  simp only [h_enabled, ↓reduceIte, h_not_elapsed, ite_eq_right_iff, reduceCtorEq, imp_false,
+    Nat.not_le]
   exact h_over
 
 /-- **P3' — `tryAdd` rejects over-cap requests at interval reset.**
@@ -186,7 +187,8 @@ theorem tryAdd_rejects_over_cap_at_reset
     (h_over : amount.toNat > c.capacity.toNat) :
     c.tryAdd amount now = TryAdd.capReached := by
   unfold tryAdd
-  simp [h_enabled, h_elapsed]
+  simp only [h_enabled, ↓reduceIte, h_elapsed, ite_eq_right_iff, reduceCtorEq, imp_false,
+    Nat.not_le]
   exact h_over
 
 /-- **P4 — Interval-reset idempotence.** After the window elapses,
@@ -201,7 +203,7 @@ theorem interval_reset_idempotent
     (h_ok : c.tryAdd amount now = TryAdd.ok c') :
     c'.current = amount ∧ c'.windowStart = now := by
   unfold tryAdd at h_ok
-  simp [h_enabled, h_elapsed, h_fits] at h_ok
+  simp only [h_enabled, ↓reduceIte, h_elapsed, h_fits, TryAdd.ok.injEq] at h_ok
   rw [← h_ok]
   exact ⟨rfl, rfl⟩
 

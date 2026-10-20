@@ -54,7 +54,7 @@ Carries two preconditions in its type:
 The compiler will reject any call site that hasn't proved both. -/
 def transfer (src dst : Account) (amount : Lamports)
     (h_under : amount ≤ src.lamports)
-    (h_over  : dst.lamports.toNat + amount.toNat < UInt64.size) : TransferResult :=
+    (h_over : dst.lamports.toNat + amount.toNat < UInt64.size) : TransferResult :=
   { source := src.debit amount h_under,
     destination := dst.credit amount h_over }
 
@@ -70,7 +70,7 @@ corollary not stated here. -/
 theorem transfer_preserves_total
     (src dst : Account) (amount : Lamports)
     (h_under : amount ≤ src.lamports)
-    (h_over  : dst.lamports.toNat + amount.toNat < UInt64.size) :
+    (h_over : dst.lamports.toNat + amount.toNat < UInt64.size) :
     (transfer src dst amount h_under h_over).source.lamports.toNat
       + (transfer src dst amount h_under h_over).destination.lamports.toNat
       = src.lamports.toNat + dst.lamports.toNat := by

@@ -100,6 +100,7 @@ theorem stepRegOutcome_ne_err {o : RegOutcome} {pc : U64} {m : Mem} {ss : StackS
   | okn => simp [stepRegOutcome]
   | oks rs' => simp [stepRegOutcome]
 
+set_option linter.flexible false in -- simp_all followed by split
 /-- The 32-bit ALU never faults to `err` on a verified instruction. -/
 theorem evalAlu32_ne_nok {bop : Binop} {dst : BpfIReg} {sop : SndOp} {rs : RegMap}
     {isV1 : Bool} (h : verifyAlu bop sop isV1 = true) :
@@ -108,14 +109,16 @@ theorem evalAlu32_ne_nok {bop : Binop} {dst : BpfIReg} {sop : SndOp} {rs : RegMa
     simp_all [evalAlu32, verifyAlu, checkImmNonzero, bne_iff_ne] <;>
     (repeat' split) <;> simp_all
 
+set_option linter.flexible false in -- simp_all followed by split
 /-- The 64-bit ALU never faults to `err` on a verified instruction. -/
 theorem evalAlu64_ne_nok {bop : Binop} {dst : BpfIReg} {sop : SndOp} {rs : RegMap}
     {isV1 : Bool} (h : verifyAlu bop sop isV1 = true) :
     evalAlu64 bop dst sop rs isV1 ≠ .nok := by
   cases bop <;> cases sop <;>
     simp_all [evalAlu64, verifyAlu, checkImmNonzero, bne_iff_ne] <;>
-    (repeat' split) <;> (first | bv_decide | simp_all)
+    (repeat' split) <;> (first | bv_decide )
 
+set_option linter.flexible false in -- simp_all followed by split
 /-- The 32-bit PQR never faults to `err` on a verified instruction. -/
 theorem evalPqr32_ne_nok {pop : Pqrop} {dst : BpfIReg} {sop : SndOp} {rs : RegMap}
     {isV1 : Bool} (h : verifyPqr pop sop = true) :
@@ -124,13 +127,14 @@ theorem evalPqr32_ne_nok {pop : Pqrop} {dst : BpfIReg} {sop : SndOp} {rs : RegMa
     simp_all [evalPqr32, verifyPqr, checkImmNonzero, pqrDivResult, bne_iff_ne] <;>
     (repeat' split) <;> simp_all
 
+set_option linter.flexible false in -- simp_all followed by split
 /-- The 64-bit PQR never faults to `err` on a verified instruction. -/
 theorem evalPqr64_ne_nok {pop : Pqrop} {dst : BpfIReg} {sop : SndOp} {rs : RegMap}
     {isV1 : Bool} (h : verifyPqr pop sop = true) :
     evalPqr64 pop dst sop rs isV1 ≠ .nok := by
   cases pop <;> cases sop <;>
     simp_all [evalPqr64, verifyPqr, checkImmNonzero, pqrDivResult, bne_iff_ne] <;>
-    (repeat' split) <;> (first | bv_decide | simp_all)
+    (repeat' split) <;> (first | bv_decide )
 
 /-! ## Safety -/
 

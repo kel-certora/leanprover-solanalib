@@ -45,7 +45,7 @@ the `.toNat` level — UInt64-level equality also holds modulo bounds). -/
 theorem credit_debit_cancel_toNat
     (a : Account) (m : Lamports)
     (h_cred : a.lamports.toNat + m.toNat < UInt64.size)
-    (h_deb  : m ≤ (Account.credit a m h_cred).lamports) :
+    (h_deb : m ≤ (Account.credit a m h_cred).lamports) :
     (Account.debit (Account.credit a m h_cred) m h_deb).lamports.toNat
       = a.lamports.toNat := by
   rw [debit_lamports_toNat, credit_lamports_toNat]
@@ -57,7 +57,7 @@ at the `.toNat` level. -/
 theorem transfer_source_loses_m
     (src dst : Account) (m : Lamports)
     (h_under : m ≤ src.lamports)
-    (h_over  : dst.lamports.toNat + m.toNat < UInt64.size) :
+    (h_over : dst.lamports.toNat + m.toNat < UInt64.size) :
     src.lamports.toNat - (transfer src dst m h_under h_over).source.lamports.toNat
       = m.toNat := by
   have h_under_nat : m.toNat ≤ src.lamports.toNat :=

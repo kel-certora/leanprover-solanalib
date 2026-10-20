@@ -155,18 +155,18 @@ theorem add_comm (a b : Fraction) : a.add b = b.add a := by
 
 theorem mul_one (a : Fraction) : a.mul one = a := by
   ext
-  show a.bits * one.bits / scale = a.bits
+  change a.bits * one.bits / scale = a.bits
   rw [one_bits, Nat.mul_div_cancel _ scale_pos]
 
 theorem one_mul (a : Fraction) : one.mul a = a := by
   ext
-  show one.bits * a.bits / scale = a.bits
+  change one.bits * a.bits / scale = a.bits
   rw [one_bits, Nat.mul_comm, Nat.mul_div_cancel _ scale_pos]
 
 /-! ### Order theorems -/
 
 theorem zero_le (a : Fraction) : zero ≤ a := by
-  show 0 ≤ a.bits
+  change 0 ≤ a.bits
   exact Nat.zero_le _
 
 @[refl] theorem le_refl (a : Fraction) : a ≤ a := Nat.le_refl _
@@ -183,20 +183,20 @@ theorem le_antisymm {a b : Fraction} (h₁ : a ≤ b) (h₂ : b ≤ a) : a = b :
 /-- Integer round-trip: `fromNat n |>.toFloor = n`. The fixed-point
 encoding preserves integer values exactly. -/
 theorem toFloor_fromNat (n : Nat) : (fromNat n).toFloor = n := by
-  simp
+  simp only [toFloor_def, fromNat_bits]
   exact Nat.mul_div_cancel _ scale_pos
 
 /-- `sub` followed by `add` cancels (within its precondition). -/
 theorem sub_add (a b : Fraction) (h : b.bits ≤ a.bits) :
     (a.sub b h).add b = a := by
   ext
-  simp
+  simp only [add_bits, sub_bits]
   exact Nat.sub_add_cancel h
 
 /-- Division by `one` is identity. -/
 theorem div_one (a : Fraction) : a.div one one_bits_ne_zero = a := by
   ext
-  show a.bits * scale / one.bits = a.bits
+  change a.bits * scale / one.bits = a.bits
   rw [one_bits, Nat.mul_div_cancel _ scale_pos]
 
 /-! ## Bridging to `Lamports`

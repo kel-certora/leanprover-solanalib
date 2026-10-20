@@ -13,6 +13,8 @@ pinning the final `BPF_Success` return value. Exercises 64-bit move/add, the
 32-bit sign-extending add quirk, and a taken conditional branch.
 -/
 
+set_option linter.style.nativeDecide false
+
 namespace SolanalibTest.SBPF.Interpreter
 
 open Solanalib.SBPF
