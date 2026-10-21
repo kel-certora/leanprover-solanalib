@@ -210,7 +210,7 @@ Listed roughly in order of how foundational they are; not all need to be done be
 
 ### Numeric foundation
 
-- [ ] **`Fraction.mul_assoc` error bound.** Truncating `bits / scale` after each multiplication introduces ≤ 1 ULP of error; left-associative and right-associative multiplications can differ by `(a + c) / scale` in the worst case. The theorem statement is straightforward; the proof needs careful `Nat` lemmas about double-truncation.
+- [x] **`Fraction.mul_assoc` error bound.** Truncating `bits / scale` after each multiplication introduces ≤ 1 ULP of error; left-associative and right-associative multiplications can differ by `(a + c) / scale` in the worst case. The theorem statement is straightforward; the proof needs careful `Nat` lemmas about double-truncation. Landed: `abs_sub_toRat_mulFloor_assoc_lt`, `abs_sub_toRat_mulCeil_assoc_lt` and `abs_sub_toRat_mulTrunc_assoc_lt` show that the two groupings differ by less than `(|a| + |c| + 1) / 2^n` for each rounding mode.
 - [ ] **`Fraction128` bounded refinement.** Mirror of the `Lamports` / `LamportsUnchecked` story: a `UInt128`-backed `Fraction128` plus `.toNat` bridge. Lean 4 doesn't have native `UInt128`; modelled as `Fin (2^128)` or a `(lo, hi)` `UInt64` pair.
 - [x] **`Fraction.divCeil`** — round-up variant for slippage / collateralisation calculations.
 - [ ] **Pow / `Real.exp` correspondence** — for compound interest, we'll want a theorem bounding `pow_fraction r n` against the mathematical `e^(r·n)`. Requires importing more of Mathlib.

@@ -578,10 +578,7 @@ theorem divTrunc_le_divCeil (f₁ f₂ : Fraction n) : f₁ /₀ f₂ ≤ f₁ /
   grind [divFloor_le_divCeil]
 
 /-!
-### Embedding into the rational numbers
-
-This section proves the correctness of `Fraction n` with respect to `ℚ`: it computes `+`, `-`
-and `≤` exactly as `ℚ` does, and it represents exactly the multiples of `1 / 2^n`.
+### Embedding into `ℚ` and precision loss
 
 Each `f : Fraction n` stands for the rational number `f.toRat = f.bits / 2^n`.
 `toRatOrderAddIso` shows that `toRat` is a bijection between `Fraction n` and the multiples of
@@ -590,6 +587,18 @@ Each `f : Fraction n` stands for the rational number `f.toRat = f.bits / 2^n`.
 Every other rational number, such as `1 / 3`, has no representation as a `Fraction n` and must be
 rounded. Multiplication and division are therefore not exact. Their correctness with respect to
 `ℚ` is the bound on the rounding error in the `Precision loss` sections below.
+
+Results:
+
+* Embedding: `toRat` is an order-preserving additive isomorphism onto the multiples of
+  `1 / 2^n`.
+* Multiplication:
+  * `*↓` is at most and `*↑` is at least the exact product, `|f₁ *₀ f₂|` is at most `|f₁ * f₂|`,
+    and each differs from the exact product by less than `1 / 2^n`.
+  * Associativity: for each rounding mode, `f₁ * f₂ * f₃` and `f₁ * (f₂ * f₃)` differ by less
+    than `(|f₁| + |f₃| + 1) / 2^n`.
+* Division: for `f₂ ≠ 0`, `/↓` is at most and `/↑` is at least the exact quotient, `|f₁ /₀ f₂|` is
+  at most `|f₁ / f₂|`, and each differs from the exact quotient by less than `1 / 2^n`.
 -/
 
 /-- `toRat` as an order-preserving additive isomorphism from `Fraction n` onto the multiples of
@@ -689,6 +698,141 @@ theorem abs_toRat_mulTrunc_le (f₁ f₂ : Fraction n) :
 theorem abs_sub_toRat_mulTrunc_lt (f₁ f₂ : Fraction n) :
     |f₁.toRat * f₂.toRat - (f₁ *₀ f₂).toRat| < 1 / 2 ^ n := by
   grind
+
+/-- `f₁ *↓ f₂ *↓ f₃` and `f₁ *↓ (f₂ *↓ f₃)` differ by less than `(|f₁| + |f₃| + 1) / 2 ^ n`. -/
+theorem abs_sub_toRat_mulFloor_assoc_lt (f₁ f₂ f₃ : Fraction n) :
+    |(f₁ *↓ f₂ *↓ f₃).toRat - (f₁ *↓ (f₂ *↓ f₃)).toRat|
+      < (|f₁.toRat| + |f₃.toRat| + 1) / 2 ^ n := by
+  have err (f g : Fraction n) :
+      0 ≤ f.toRat * g.toRat - (f *↓ g).toRat ∧ f.toRat * g.toRat - (f *↓ g).toRat < 1 / 2 ^ n :=
+    ⟨sub_nonneg.mpr (toRat_mulFloor_le f g), sub_lt_iff_lt_add'.mpr (lt_toRat_mulFloor_add f g)⟩
+  obtain ⟨hx₀, hx⟩ := err f₁ f₂
+  obtain ⟨hy₀, hy⟩ := err f₂ f₃
+  obtain ⟨hl₀, hl⟩ := err (f₁ *↓ f₂) f₃
+  obtain ⟨hr₀, hr⟩ := err f₁ (f₂ *↓ f₃)
+  set a := f₁.toRat
+  set b := f₂.toRat
+  set c := f₃.toRat
+  set x := (f₁ *↓ f₂).toRat
+  set y := (f₂ *↓ f₃).toRat
+  set l := (f₁ *↓ f₂ *↓ f₃).toRat
+  set r := (f₁ *↓ (f₂ *↓ f₃)).toRat
+  set u : ℚ := 1 / 2 ^ n with hu
+  have inner : |a * (b * c - y) - (a * b - x) * c| ≤ |a| * u + u * |c| :=
+    calc |a * (b * c - y) - (a * b - x) * c|
+        ≤ |a * (b * c - y)| + |(a * b - x) * c| := abs_sub _ _
+      _ = |a| * (b * c - y) + (a * b - x) * |c| := by
+        rw [abs_mul, abs_mul, abs_of_nonneg hy₀, abs_of_nonneg hx₀]
+      _ ≤ |a| * u + u * |c| := by
+        apply add_le_add (mul_le_mul_of_nonneg_left hy.le (abs_nonneg a))
+          (mul_le_mul_of_nonneg_right hx.le (abs_nonneg c))
+  calc |l - r|
+      = |(a * y - r) - (x * c - l) + (a * (b * c - y) - (a * b - x) * c)| := by congr 1; ring
+    _ ≤ |(a * y - r) - (x * c - l)| + |a * (b * c - y) - (a * b - x) * c| := abs_add_le _ _
+    _ < u + (|a| * u + u * |c|) :=
+      add_lt_add_of_lt_of_le (abs_sub_lt_of_nonneg_of_lt hr₀ hr hl₀ hl) inner
+    _ = (|a| + |c| + 1) / 2 ^ n := by rw [hu]; ring
+
+/-- `f₁ *↑ f₂ *↑ f₃` and `f₁ *↑ (f₂ *↑ f₃)` differ by less than `(|f₁| + |f₃| + 1) / 2 ^ n`. -/
+theorem abs_sub_toRat_mulCeil_assoc_lt (f₁ f₂ f₃ : Fraction n) :
+    |(f₁ *↑ f₂ *↑ f₃).toRat - (f₁ *↑ (f₂ *↑ f₃)).toRat|
+      < (|f₁.toRat| + |f₃.toRat| + 1) / 2 ^ n := by
+  have err (f g : Fraction n) :
+      0 ≤ (f *↑ g).toRat - f.toRat * g.toRat ∧ (f *↑ g).toRat - f.toRat * g.toRat < 1 / 2 ^ n :=
+    ⟨sub_nonneg.mpr (le_toRat_mulCeil f g), sub_lt_comm.mpr (toRat_mulCeil_sub_lt f g)⟩
+  obtain ⟨hx₀, hx⟩ := err f₁ f₂
+  obtain ⟨hy₀, hy⟩ := err f₂ f₃
+  obtain ⟨hl₀, hl⟩ := err (f₁ *↑ f₂) f₃
+  obtain ⟨hr₀, hr⟩ := err f₁ (f₂ *↑ f₃)
+  set a := f₁.toRat
+  set b := f₂.toRat
+  set c := f₃.toRat
+  set x := (f₁ *↑ f₂).toRat
+  set y := (f₂ *↑ f₃).toRat
+  set l := (f₁ *↑ f₂ *↑ f₃).toRat
+  set r := (f₁ *↑ (f₂ *↑ f₃)).toRat
+  set u : ℚ := 1 / 2 ^ n with hu
+  have inner : |(x - a * b) * c - a * (y - b * c)| ≤ u * |c| + |a| * u :=
+    calc |(x - a * b) * c - a * (y - b * c)|
+        ≤ |(x - a * b) * c| + |a * (y - b * c)| := abs_sub _ _
+      _ = (x - a * b) * |c| + |a| * (y - b * c) := by
+        rw [abs_mul, abs_mul, abs_of_nonneg hx₀, abs_of_nonneg hy₀]
+      _ ≤ u * |c| + |a| * u := by
+        apply add_le_add (mul_le_mul_of_nonneg_right hx.le (abs_nonneg c))
+          (mul_le_mul_of_nonneg_left hy.le (abs_nonneg a))
+  calc |l - r|
+      = |(l - x * c) - (r - a * y) + ((x - a * b) * c - a * (y - b * c))| := by congr 1; ring
+    _ ≤ |(l - x * c) - (r - a * y)| + |(x - a * b) * c - a * (y - b * c)| := abs_add_le _ _
+    _ < u + (u * |c| + |a| * u) :=
+      add_lt_add_of_lt_of_le (abs_sub_lt_of_nonneg_of_lt hl₀ hl hr₀ hr) inner
+    _ = (|a| + |c| + 1) / 2 ^ n := by rw [hu]; ring
+
+/-- `f₁ *₀ f₂ *₀ f₃` and `f₁ *₀ (f₂ *₀ f₃)` differ by less than `(|f₁| + |f₃| + 1) / 2 ^ n`. -/
+theorem abs_sub_toRat_mulTrunc_assoc_lt (f₁ f₂ f₃ : Fraction n) :
+    |(f₁ *₀ f₂ *₀ f₃).toRat - (f₁ *₀ (f₂ *₀ f₃)).toRat|
+      < (|f₁.toRat| + |f₃.toRat| + 1) / 2 ^ n := by
+  have hx := abs_sub_toRat_mulTrunc_lt f₁ f₂
+  have hy := abs_sub_toRat_mulTrunc_lt f₂ f₃
+  have hl := abs_sub_toRat_mulTrunc_lt (f₁ *₀ f₂) f₃
+  have hr := abs_sub_toRat_mulTrunc_lt f₁ (f₂ *₀ f₃)
+  have hl' := abs_toRat_mulTrunc_le (f₁ *₀ f₂) f₃
+  have hr' := abs_toRat_mulTrunc_le f₁ (f₂ *₀ f₃)
+  set a := f₁.toRat
+  set b := f₂.toRat
+  set c := f₃.toRat
+  set x := (f₁ *₀ f₂).toRat
+  set y := (f₂ *₀ f₃).toRat
+  set l := (f₁ *₀ f₂ *₀ f₃).toRat
+  set r := (f₁ *₀ (f₂ *₀ f₃)).toRat
+  set u : ℚ := 1 / 2 ^ n with hu
+  have inner : |x * c - a * y| ≤ |a| * u + u * |c| :=
+    calc |x * c - a * y|
+        = |a * (b * c - y) - (a * b - x) * c| := by congr 1; ring
+      _ ≤ |a * (b * c - y)| + |(a * b - x) * c| := abs_sub _ _
+      _ = |a| * |b * c - y| + |a * b - x| * |c| := by rw [abs_mul, abs_mul]
+      _ ≤ |a| * u + u * |c| :=
+        add_le_add (mul_le_mul_of_nonneg_left hy.le (abs_nonneg a))
+          (mul_le_mul_of_nonneg_right hx.le (abs_nonneg c))
+  have outer : |l - r| < |x * c - a * y| + u := by
+    rcases le_total 0 (x * c) with hp | hp <;> rcases le_total 0 (a * y) with hq | hq
+    · have el : 0 ≤ x * c - l :=
+        sub_nonneg.mpr ((le_abs_self l).trans (hl'.trans_eq (abs_of_nonneg hp)))
+      have er : 0 ≤ a * y - r :=
+        sub_nonneg.mpr ((le_abs_self r).trans (hr'.trans_eq (abs_of_nonneg hq)))
+      calc |l - r|
+          = |(x * c - a * y) + ((a * y - r) - (x * c - l))| := by congr 1; ring
+        _ ≤ |x * c - a * y| + |(a * y - r) - (x * c - l)| := abs_add_le _ _
+        _ < |x * c - a * y| + u := (add_lt_add_iff_left _).mpr
+          (abs_sub_lt_of_nonneg_of_lt er (abs_lt.mp hr).2 el (abs_lt.mp hl).2)
+    · calc |l - r|
+          ≤ |l| + |r| := abs_sub _ _
+        _ ≤ x * c + -(a * y) :=
+          add_le_add (hl'.trans_eq (abs_of_nonneg hp)) (hr'.trans_eq (abs_of_nonpos hq))
+        _ = x * c - a * y := (sub_eq_add_neg _ _).symm
+        _ ≤ |x * c - a * y| := le_abs_self _
+        _ < |x * c - a * y| + u := lt_add_of_pos_right _ (by rw [hu]; positivity)
+    · calc |l - r|
+          ≤ |l| + |r| := abs_sub _ _
+        _ ≤ -(x * c) + a * y :=
+          add_le_add (hl'.trans_eq (abs_of_nonpos hp)) (hr'.trans_eq (abs_of_nonneg hq))
+        _ = a * y - x * c := neg_add_eq_sub _ _
+        _ ≤ |a * y - x * c| := le_abs_self _
+        _ = |x * c - a * y| := abs_sub_comm _ _
+        _ < |x * c - a * y| + u := lt_add_of_pos_right _ (by rw [hu]; positivity)
+    · have el : 0 ≤ l - x * c := sub_nonneg.mpr
+        (neg_le_neg_iff.mp ((neg_le_abs l).trans (hl'.trans_eq (abs_of_nonpos hp))))
+      have er : 0 ≤ r - a * y := sub_nonneg.mpr
+        (neg_le_neg_iff.mp ((neg_le_abs r).trans (hr'.trans_eq (abs_of_nonpos hq))))
+      calc |l - r|
+          = |(x * c - a * y) + ((l - x * c) - (r - a * y))| := by congr 1; ring
+        _ ≤ |x * c - a * y| + |(l - x * c) - (r - a * y)| := abs_add_le _ _
+        _ < |x * c - a * y| + u := (add_lt_add_iff_left _).mpr
+          (abs_sub_lt_of_nonneg_of_lt el (abs_lt.mp ((abs_sub_comm _ _).trans_lt hl)).2
+            er (abs_lt.mp ((abs_sub_comm _ _).trans_lt hr)).2)
+  calc |l - r|
+      < |x * c - a * y| + u := outer
+    _ ≤ |a| * u + u * |c| + u := (add_le_add_iff_right u).mpr inner
+    _ = (|a| + |c| + 1) / 2 ^ n := by rw [hu]; ring
 
 
 /-! #### Precision loss of division
