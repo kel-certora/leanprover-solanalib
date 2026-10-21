@@ -102,8 +102,8 @@ variable {n: ℕ}
 instance : Zero (Fraction n) := ⟨⟨0⟩⟩
 instance : One (Fraction n) := ⟨⟨2^n⟩⟩
 
-@[simp] theorem bits_zero : (0: Fraction n).bits = 0 := rfl
-@[simp] theorem bits_one : (1: Fraction n).bits = 2^n := rfl
+@[simp, grind =] theorem bits_zero : (0: Fraction n).bits = 0 := rfl
+@[simp, grind =] theorem bits_one : (1: Fraction n).bits = 2^n := rfl
 
 /-- Convert a natural `k` to its fixed-point encoding `k * 2^n`. -/
 instance : NatCast (Fraction n) where
@@ -114,8 +114,8 @@ instance : IntCast (Fraction n) where
   intCast (k: ℤ) := ⟨k * 2^n⟩
 
 
-@[simp] theorem bits_natCast (k: ℕ) : (k : Fraction n).bits = k * 2 ^n := rfl
-@[simp] theorem bits_intCast (k: ℤ) : (k : Fraction n).bits = k * 2 ^n := rfl
+@[simp, grind =] theorem bits_natCast (k: ℕ) : (k : Fraction n).bits = k * 2 ^n := rfl
+@[simp, grind =] theorem bits_intCast (k: ℤ) : (k : Fraction n).bits = k * 2 ^n := rfl
 
 
 
@@ -140,7 +140,7 @@ Fixed-point numbers are closed under these operations, i.e., the results always 
 
 instance : Add (Fraction n) where add (f₁ f₂) := ⟨f₁.bits + f₂.bits⟩
 
-@[simp] theorem bits_add (f₁ f₂: Fraction n) : (f₁ + f₂).bits = f₁.bits + f₂.bits := rfl
+@[simp, grind =] theorem bits_add (f₁ f₂: Fraction n) : (f₁ + f₂).bits = f₁.bits + f₂.bits := rfl
 @[simp] theorem add_zero (f: Fraction n) : f + 0 = f := by ext; simp
 @[simp] theorem zero_add (f: Fraction n) : 0 + f = f := by ext; simp
 
@@ -155,12 +155,12 @@ theorem add_le_add_left (f₁ f₂: Fraction n) (f: Fraction n) (h: f₁ ≤ f�
 
 instance : Sub (Fraction n) where sub (f₁ f₂) := ⟨f₁.bits - f₂.bits⟩
 
-@[simp] theorem bits_sub (f₁ f₂: Fraction n) : (f₁ - f₂).bits = f₁.bits - f₂.bits := rfl
+@[simp, grind =] theorem bits_sub (f₁ f₂: Fraction n) : (f₁ - f₂).bits = f₁.bits - f₂.bits := rfl
 @[simp] theorem sub_zero (f: Fraction n) : f - 0 = f := by ext; simp
 
 instance : Neg (Fraction n) where neg f := ⟨-f.bits⟩
 
-@[simp] theorem neg_bits (f: Fraction n) : (-f).bits = -(f.bits) := by rfl
+@[simp, grind =] theorem neg_bits (f: Fraction n) : (-f).bits = -(f.bits) := by rfl
 @[simp] theorem neg_neg (f: Fraction n) : -(-f) = f := by ext; simp
 @[simp] theorem zero_sub (f: Fraction n) : 0 - f = -f := by ext; simp
 @[simp] theorem neg_add_cancel (f: Fraction n) : -f + f = 0 := by ext; simp
@@ -196,11 +196,12 @@ theorem toRat_nonneg (f : Fraction n) : 0 ≤ f.toRat ↔ 0 ≤ f := by
   rw [← bits_le_bits, bits_zero, toRat, le_div_iff₀ (by positivity), zero_mul]
   norm_cast
 
-@[simp] theorem toRat_le_toRat {f₁ f₂ : Fraction n} : f₁.toRat ≤ f₂.toRat ↔ f₁ ≤ f₂ := by
+@[simp, grind =] theorem toRat_le_toRat {f₁ f₂ : Fraction n} : f₁.toRat ≤ f₂.toRat ↔ f₁ ≤ f₂ := by
   rw [← bits_le_bits, toRat, toRat, div_le_div_iff_of_pos_right (by positivity)]
   norm_cast
 
-@[simp] theorem toRat_add (f₁ f₂ : Fraction n) : (f₁ + f₂).toRat = f₁.toRat + f₂.toRat := by
+@[simp, grind =] theorem toRat_add (f₁ f₂ : Fraction n) :
+    (f₁ + f₂).toRat = f₁.toRat + f₂.toRat := by
   simp only [toRat, bits_add, Int.cast_add, add_div]
 
 /-! ### Conversion to integers -/
@@ -377,7 +378,7 @@ def mulFloor (f₁ f₂ : Fraction n) : Fraction n := ⟨(f₁.bits * f₂.bits)
 
 @[inherit_doc] scoped infixl:70 " *↓ " => mulFloor
 
-@[simp] theorem bits_mulFloor (f₁ f₂ : Fraction n) :
+@[simp, grind =] theorem bits_mulFloor (f₁ f₂ : Fraction n) :
     (f₁ *↓ f₂).bits = (f₁.bits * f₂.bits).fdiv (2 ^ n) := rfl
 
 @[simp] theorem mulFloor_zero (f : Fraction n) : f *↓ 0 = 0 := by ext; simp [mulFloor]
@@ -407,7 +408,7 @@ theorem mulCeil_eq (f₁ f₂ : Fraction n) :
       dvd_neg, neg_sub, sub_neg_eq_add]
     omega
 
-@[simp] theorem bits_mulCeil (f₁ f₂ : Fraction n) :
+@[simp, grind =] theorem bits_mulCeil (f₁ f₂ : Fraction n) :
     (f₁ *↑ f₂).bits = -((-(f₁.bits * f₂.bits)).fdiv (2 ^ n)) := by
   rw [mulCeil_eq]
 
@@ -427,45 +428,27 @@ def mulTrunc (f₁ f₂ : Fraction n) : Fraction n := ⟨(f₁.bits * f₂.bits)
 
 @[inherit_doc] scoped infixl:70 " *₀ " => mulTrunc
 
-@[simp] theorem bits_mulTrunc (f₁ f₂ : Fraction n) :
+@[simp, grind =] theorem bits_mulTrunc (f₁ f₂ : Fraction n) :
     (f₁ *₀ f₂).bits = (f₁.bits * f₂.bits).tdiv (2 ^ n) := rfl
 
 theorem mulTrunc_comm (f₁ f₂ : Fraction n) : f₁ *₀ f₂ = f₂ *₀ f₁ := by
   simp only [mulTrunc, Int.mul_comm]
 
-theorem mulTrunc_eq_mulFloor_of_nonneg {f₁ f₂ : Fraction n} (h : 0 ≤ f₁.bits * f₂.bits) :
-    f₁ *₀ f₂ = f₁ *↓ f₂ := by
+@[grind =] theorem mulTrunc_eq_mulFloor_of_nonneg {f₁ f₂ : Fraction n}
+    (h : 0 ≤ f₁.bits * f₂.bits) : f₁ *₀ f₂ = f₁ *↓ f₂ := by
   ext; simp [mulTrunc, mulFloor, Int.fdiv_eq_ediv, Int.tdiv_eq_ediv_of_nonneg h]
 
-theorem mulTrunc_eq_mulCeil_of_neg {f₁ f₂ : Fraction n} (h : f₁.bits * f₂.bits < 0) :
-    f₁ *₀ f₂ = f₁ *↑ f₂ := by
-  rw [mulCeil_eq]
-  ext
-  simp only [mulTrunc]
-  rw [Int.fdiv_eq_ediv, if_pos (Or.inl (by positivity)), Int.sub_zero,
-    ← Int.tdiv_eq_ediv_of_nonneg (by linarith), Int.neg_tdiv, Int.neg_neg]
+@[grind =] theorem mulTrunc_eq_mulCeil_of_neg {f₁ f₂ : Fraction n}
+    (h : f₁.bits * f₂.bits < 0) : f₁ *₀ f₂ = f₁ *↑ f₂ := by
+  ext; grind [mulCeil, Int.fdiv_eq_ediv, Int.tdiv_eq_ediv]
 
 theorem mulFloor_le_mulTrunc (f₁ f₂ : Fraction n) : f₁ *↓ f₂ ≤ f₁ *₀ f₂ := by
   rw [← bits_le_bits]
-  simp only [mulFloor, mulTrunc]
-  set p := f₁.bits * f₂.bits
-  rcases le_or_gt 0 p with h | h
-  · simp [Int.fdiv_eq_ediv, Int.tdiv_eq_ediv_of_nonneg h]
-  · conv_rhs => rw [← Int.neg_neg p, Int.neg_tdiv, Int.tdiv_eq_ediv_of_nonneg (by omega)]
-    by_cases hd : 2 ^ n ∣ p <;>
-      simp [Int.fdiv_eq_ediv, Int.neg_ediv, hd,
-        Int.sign_eq_one_of_pos (by positivity : (0 : ℤ) < 2 ^ n)]
+  grind [Int.fdiv_eq_ediv, Int.tdiv_eq_ediv]
 
 theorem mulTrunc_le_mulCeil (f₁ f₂ : Fraction n) : f₁ *₀ f₂ ≤ f₁ *↑ f₂ := by
-  rw [mulCeil_eq, ← bits_le_bits]
-  simp only [mulTrunc]
-  set p := f₁.bits * f₂.bits
-  rcases le_or_gt 0 p with h | h
-  · by_cases hd : 2 ^ n ∣ p <;>
-      simp [Int.fdiv_eq_ediv, Int.tdiv_eq_ediv_of_nonneg h, Int.neg_ediv, hd,
-        Int.sign_eq_one_of_pos (by positivity : (0 : ℤ) < 2 ^ n)]
-  · conv_lhs => rw [← Int.neg_neg p, Int.neg_tdiv, Int.tdiv_eq_ediv_of_nonneg (by omega)]
-    simp [Int.fdiv_eq_ediv]
+  rw [← bits_le_bits]
+  grind [mulCeil, Int.fdiv_eq_ediv, Int.tdiv_eq_ediv]
 
 
 /-! ### Division
@@ -488,7 +471,7 @@ def divFloor (f₁ f₂ : Fraction n) : Fraction n := ⟨(f₁.bits * 2 ^ n).fdi
 
 @[inherit_doc] scoped infixl:70 " /↓ " => divFloor
 
-@[simp] theorem bits_divFloor (f₁ f₂ : Fraction n) :
+@[simp, grind =] theorem bits_divFloor (f₁ f₂ : Fraction n) :
     (f₁ /↓ f₂).bits = (f₁.bits * 2 ^ n).fdiv f₂.bits := rfl
 
 /-- The smallest fixed-point number that is at least the exact quotient of `f₁` and `f₂`. -/
@@ -504,7 +487,7 @@ def divTrunc (f₁ f₂ : Fraction n) : Fraction n := ⟨(f₁.bits * 2 ^ n).tdi
 
 @[inherit_doc] scoped infixl:70 " /₀ " => divTrunc
 
-@[simp] theorem bits_divTrunc (f₁ f₂ : Fraction n) :
+@[simp, grind =] theorem bits_divTrunc (f₁ f₂ : Fraction n) :
     (f₁ /₀ f₂).bits = (f₁.bits * 2 ^ n).tdiv f₂.bits := rfl
 
 theorem divCeil_eq (f₁ f₂ : Fraction n) :
@@ -523,7 +506,7 @@ theorem divCeil_eq (f₁ f₂ : Fraction n) :
     simp only [e, Int.fdiv_neg hb, if_neg h]
     omega
 
-@[simp] theorem bits_divCeil (f₁ f₂ : Fraction n) :
+@[simp, grind =] theorem bits_divCeil (f₁ f₂ : Fraction n) :
     (f₁ /↑ f₂).bits = -((-(f₁.bits * 2 ^ n)).fdiv f₂.bits) := by
   rw [divCeil_eq]
 
@@ -554,8 +537,8 @@ theorem neg_divFloor (f₁ f₂ : Fraction n) : -f₁ /↓ f₂ = -(f₁ /↑ f�
 @[simp] theorem neg_divTrunc_neg (f₁ f₂ : Fraction n) : -f₁ /₀ -f₂ = f₁ /₀ f₂ := by
   ext; simp [divTrunc]
 
-theorem divTrunc_eq_divFloor_of_nonneg {f₁ f₂ : Fraction n} (h : 0 ≤ f₁.bits * f₂.bits) :
-    f₁ /₀ f₂ = f₁ /↓ f₂ := by
+@[grind =] theorem divTrunc_eq_divFloor_of_nonneg {f₁ f₂ : Fraction n}
+    (h : 0 ≤ f₁.bits * f₂.bits) : f₁ /₀ f₂ = f₁ /↓ f₂ := by
   ext
   simp only [divTrunc, divFloor]
   have h2 : (0 : ℤ) < 2 ^ n := by positivity
@@ -567,8 +550,8 @@ theorem divTrunc_eq_divFloor_of_nonneg {f₁ f₂ : Fraction n} (h : 0 ≤ f₁.
   · have hp : 0 ≤ f₁.bits * 2 ^ n := by nlinarith
     rw [Int.tdiv_eq_ediv_of_nonneg hp, Int.fdiv_eq_ediv, if_pos (Or.inl hb.le), Int.sub_zero]
 
-theorem divTrunc_eq_divCeil_of_neg {f₁ f₂ : Fraction n} (h : f₁.bits * f₂.bits < 0) :
-    f₁ /₀ f₂ = f₁ /↑ f₂ := by
+@[grind =] theorem divTrunc_eq_divCeil_of_neg {f₁ f₂ : Fraction n}
+    (h : f₁.bits * f₂.bits < 0) : f₁ /₀ f₂ = f₁ /↑ f₂ := by
   rw [divCeil_eq]
   ext
   simp only [divTrunc]
@@ -586,20 +569,13 @@ theorem divTrunc_eq_divCeil_of_neg {f₁ f₂ : Fraction n} (h : f₁.bits * f�
 
 theorem divFloor_le_divCeil (f₁ f₂ : Fraction n) : f₁ /↓ f₂ ≤ f₁ /↑ f₂ := by
   rw [← bits_le_bits]
-  simp only [divFloor, divCeil]
-  split_ifs <;> simp
+  grind [divCeil]
 
 theorem divFloor_le_divTrunc (f₁ f₂ : Fraction n) : f₁ /↓ f₂ ≤ f₁ /₀ f₂ := by
-  rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
-  · exact (divTrunc_eq_divFloor_of_nonneg h).ge
-  · rw [divTrunc_eq_divCeil_of_neg h]
-    exact divFloor_le_divCeil f₁ f₂
+  grind [divFloor_le_divCeil]
 
 theorem divTrunc_le_divCeil (f₁ f₂ : Fraction n) : f₁ /₀ f₂ ≤ f₁ /↑ f₂ := by
-  rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
-  · rw [divTrunc_eq_divFloor_of_nonneg h]
-    exact divFloor_le_divCeil f₁ f₂
-  · exact (divTrunc_eq_divCeil_of_neg h).le
+  grind [divFloor_le_divCeil]
 
 /-!
 ### Embedding into the rational numbers
@@ -649,6 +625,9 @@ theorem toRat_mulFloor_le (f₁ f₂ : Fraction n) :
   norm_cast
   simp [Int.ediv_mul_le]
 
+-- The `grind` attribute cannot select `(f₁ *↓ f₂).toRat` as the pattern.
+grind_pattern toRat_mulFloor_le => (f₁ *↓ f₂).toRat
+
 /-- The exact product is less than `f₁ *↓ f₂ + 1 / 2 ^ n`. -/
 theorem lt_toRat_mulFloor_add (f₁ f₂ : Fraction n) :
     f₁.toRat * f₂.toRat < (f₁ *↓ f₂).toRat + 1 / 2 ^ n := by
@@ -658,6 +637,9 @@ theorem lt_toRat_mulFloor_add (f₁ f₂ : Fraction n) :
   norm_cast
   conv => rhs; rw [Int.mul_comm]
   apply Int.lt_ediv_add_one_mul_self (H := by simp)
+
+-- The `grind` attribute cannot select `(f₁ *↓ f₂).toRat` as the pattern.
+grind_pattern lt_toRat_mulFloor_add => (f₁ *↓ f₂).toRat
 
 /-- `f₁ *↑ f₂` is at least the exact product. -/
 theorem le_toRat_mulCeil (f₁ f₂ : Fraction n) :
@@ -669,6 +651,9 @@ theorem le_toRat_mulCeil (f₁ f₂ : Fraction n) :
   norm_cast
   rw [le_neg, Int.mul_comm]
   apply Int.ediv_mul_le (H := by simp)
+
+-- The `grind` attribute cannot select `(f₁ *↑ f₂).toRat` as the pattern.
+grind_pattern le_toRat_mulCeil => (f₁ *↑ f₂).toRat
 
 /-- `f₁ *↑ f₂ - 1 / 2 ^ n` is less than the exact product. -/
 theorem toRat_mulCeil_sub_lt (f₁ f₂ : Fraction n) :
@@ -682,16 +667,15 @@ theorem toRat_mulCeil_sub_lt (f₁ f₂ : Fraction n) :
   conv => rhs; rw [Int.mul_comm]
   apply Int.lt_ediv_add_one_mul_self (H := by simp)
 
+-- The `grind` attribute cannot select `(f₁ *↑ f₂).toRat` as the pattern.
+grind_pattern toRat_mulCeil_sub_lt => (f₁ *↑ f₂).toRat
+
 /-- The absolute value of `f₁ *₀ f₂` is at most the absolute value of the exact product. -/
 theorem abs_toRat_mulTrunc_le (f₁ f₂ : Fraction n) :
     |(f₁ *₀ f₂).toRat| ≤ |f₁.toRat * f₂.toRat| := by
   rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
-  · rw [mulTrunc_eq_mulFloor_of_nonneg h]
-    apply abs_le_abs_of_nonneg _ (toRat_mulFloor_le f₁ f₂)
-    unfold toRat mulFloor
-    apply div_nonneg _ (by positivity)
-    rw [Int.fdiv_eq_ediv, if_pos (Or.inl (by positivity)), Int.sub_zero]
-    exact_mod_cast Int.ediv_nonneg h (by positivity)
+  · have := (toRat_nonneg (f₁ *↓ f₂)).mpr (Int.fdiv_nonneg h (by positivity))
+    grind
   · rw [mulTrunc_eq_mulCeil_of_neg h]
     apply abs_le_abs_of_nonpos _ (le_toRat_mulCeil f₁ f₂)
     rw [mulCeil_eq]
@@ -704,16 +688,7 @@ theorem abs_toRat_mulTrunc_le (f₁ f₂ : Fraction n) :
 /-- `f₁ *₀ f₂` differs from the exact product by less than `1 / 2 ^ n`. -/
 theorem abs_sub_toRat_mulTrunc_lt (f₁ f₂ : Fraction n) :
     |f₁.toRat * f₂.toRat - (f₁ *₀ f₂).toRat| < 1 / 2 ^ n := by
-  have h0 : (0 : ℚ) < 1 / 2 ^ n := by positivity
-  rcases le_or_gt 0 (f₁.bits * f₂.bits) with h | h
-  · have h1 := toRat_mulFloor_le f₁ f₂
-    have h2 := lt_toRat_mulFloor_add f₁ f₂
-    rw [mulTrunc_eq_mulFloor_of_nonneg h, abs_lt]
-    constructor <;> linarith
-  · have h1 := le_toRat_mulCeil f₁ f₂
-    have h2 := toRat_mulCeil_sub_lt f₁ f₂
-    rw [mulTrunc_eq_mulCeil_of_neg h, abs_lt]
-    constructor <;> linarith
+  grind
 
 
 /-! #### Precision loss of division
@@ -728,8 +703,7 @@ absolute value of `divTrunc` is at most the absolute value of the exact quotient
 theorem toRat_divFloor_le (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
     (f₁ /↓ f₂).toRat ≤ f₁.toRat / f₂.toRat := by
   wlog hpos : 0 < f₂ generalizing f₁ f₂
-  · simpa [toRat, neg_div, div_neg] using
-      this (-f₁) (-f₂) (neg_ne_zero.mpr h₂) (neg_pos.mpr ((not_lt.mp hpos).lt_of_ne h₂))
+  · simpa [toRat, neg_div, div_neg] using this (-f₁) (-f₂) (by grind) (by grind)
   have hb : 0 < f₂.bits := hpos
   have hb' : (0 : ℚ) < f₂.bits := by exact_mod_cast hb
   simp only [toRat, divFloor, Int.fdiv_eq_ediv, hb.le, true_or, ↓reduceIte, _root_.sub_zero]
@@ -737,12 +711,14 @@ theorem toRat_divFloor_le (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
   norm_cast
   exact Int.ediv_mul_le _ hb.ne'
 
+-- The `grind` attribute cannot select `(f₁ /↓ f₂).toRat` as the pattern.
+grind_pattern toRat_divFloor_le => (f₁ /↓ f₂).toRat
+
 /-- The exact quotient is less than `f₁ /↓ f₂ + 1 / 2 ^ n`. -/
 theorem lt_toRat_divFloor_add (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
     f₁.toRat / f₂.toRat < (f₁ /↓ f₂).toRat + 1 / 2 ^ n := by
   wlog hpos : 0 < f₂ generalizing f₁ f₂
-  · simpa [toRat, neg_div, div_neg] using
-      this (-f₁) (-f₂) (neg_ne_zero.mpr h₂) (neg_pos.mpr ((not_lt.mp hpos).lt_of_ne h₂))
+  · simpa [toRat, neg_div, div_neg] using this (-f₁) (-f₂) (by grind) (by grind)
   have hb : 0 < f₂.bits := hpos
   have hb' : (0 : ℚ) < f₂.bits := by exact_mod_cast hb
   simp only [toRat, divFloor, Int.fdiv_eq_ediv, hb.le, true_or, ↓reduceIte, _root_.sub_zero]
@@ -751,12 +727,14 @@ theorem lt_toRat_divFloor_add (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
   norm_cast
   exact Int.lt_ediv_add_one_mul_self _ hb
 
+-- The `grind` attribute cannot select `(f₁ /↓ f₂).toRat` as the pattern.
+grind_pattern lt_toRat_divFloor_add => (f₁ /↓ f₂).toRat
+
 /-- `f₁ /↑ f₂` is at least the exact quotient. -/
 theorem le_toRat_divCeil (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
     f₁.toRat / f₂.toRat ≤ (f₁ /↑ f₂).toRat := by
   wlog hpos : 0 < f₂ generalizing f₁ f₂
-  · simpa [toRat, neg_div, div_neg] using
-      this (-f₁) (-f₂) (neg_ne_zero.mpr h₂) (neg_pos.mpr ((not_lt.mp hpos).lt_of_ne h₂))
+  · simpa [toRat, neg_div, div_neg] using this (-f₁) (-f₂) (by grind) (by grind)
   have hb : 0 < f₂.bits := hpos
   have hb' : (0 : ℚ) < f₂.bits := by exact_mod_cast hb
   rw [divCeil_eq]
@@ -765,12 +743,14 @@ theorem le_toRat_divCeil (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
   norm_cast
   linarith [Int.ediv_mul_le (-(f₁.bits * ((2 ^ n : ℕ) : ℤ))) hb.ne']
 
+-- The `grind` attribute cannot select `(f₁ /↑ f₂).toRat` as the pattern.
+grind_pattern le_toRat_divCeil => (f₁ /↑ f₂).toRat
+
 /-- `f₁ /↑ f₂ - 1 / 2 ^ n` is less than the exact quotient. -/
 theorem toRat_divCeil_sub_lt (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
     (f₁ /↑ f₂).toRat - 1 / 2 ^ n < f₁.toRat / f₂.toRat := by
   wlog hpos : 0 < f₂ generalizing f₁ f₂
-  · simpa [toRat, neg_div, div_neg] using
-      this (-f₁) (-f₂) (neg_ne_zero.mpr h₂) (neg_pos.mpr ((not_lt.mp hpos).lt_of_ne h₂))
+  · simpa [toRat, neg_div, div_neg] using this (-f₁) (-f₂) (by grind) (by grind)
   have hb : 0 < f₂.bits := hpos
   have hb' : (0 : ℚ) < f₂.bits := by exact_mod_cast hb
   rw [divCeil_eq]
@@ -780,19 +760,18 @@ theorem toRat_divCeil_sub_lt (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
   norm_cast
   linarith [Int.lt_ediv_add_one_mul_self (-(f₁.bits * ((2 ^ n : ℕ) : ℤ))) hb]
 
+-- The `grind` attribute cannot select `(f₁ /↑ f₂).toRat` as the pattern.
+grind_pattern toRat_divCeil_sub_lt => (f₁ /↑ f₂).toRat
+
 /-- The absolute value of `f₁ /₀ f₂` is at most the absolute value of the exact quotient. -/
 theorem abs_toRat_divTrunc_le (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
     |(f₁ /₀ f₂).toRat| ≤ |f₁.toRat / f₂.toRat| := by
   wlog hpos : 0 < f₂ generalizing f₁ f₂
-  · simpa [toRat, neg_div, div_neg] using
-      this (-f₁) (-f₂) (neg_ne_zero.mpr h₂) (neg_pos.mpr ((not_lt.mp hpos).lt_of_ne h₂))
+  · simpa [toRat, neg_div, div_neg] using this (-f₁) (-f₂) (by grind) (by grind)
   have hb : 0 < f₂.bits := hpos
   rcases le_or_gt 0 f₁.bits with h | h
-  · rw [divTrunc_eq_divFloor_of_nonneg (mul_nonneg h hb.le)]
-    apply abs_le_abs_of_nonneg _ (toRat_divFloor_le f₁ f₂ h₂)
-    unfold toRat divFloor
-    apply div_nonneg _ (by positivity)
-    exact_mod_cast Int.fdiv_nonneg (mul_nonneg h (by positivity)) hb.le
+  · have := (toRat_nonneg (f₁ /↓ f₂)).mpr (Int.fdiv_nonneg (mul_nonneg h (by positivity)) hb.le)
+    grind [mul_nonneg h hb.le]
   · rw [divTrunc_eq_divCeil_of_neg (mul_neg_of_neg_of_pos h hb)]
     apply abs_le_abs_of_nonpos _ (le_toRat_divCeil f₁ f₂ h₂)
     rw [divCeil_eq]
@@ -805,20 +784,7 @@ theorem abs_toRat_divTrunc_le (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
 /-- `f₁ /₀ f₂` differs from the exact quotient by less than `1 / 2 ^ n`. -/
 theorem abs_sub_toRat_divTrunc_lt (f₁ f₂ : Fraction n) (h₂ : f₂ ≠ 0) :
     |f₁.toRat / f₂.toRat - (f₁ /₀ f₂).toRat| < 1 / 2 ^ n := by
-  wlog hpos : 0 < f₂ generalizing f₁ f₂
-  · simpa [toRat, neg_div, div_neg] using
-      this (-f₁) (-f₂) (neg_ne_zero.mpr h₂) (neg_pos.mpr ((not_lt.mp hpos).lt_of_ne h₂))
-  have hb : 0 < f₂.bits := hpos
-  have h0 : (0 : ℚ) < 1 / 2 ^ n := by positivity
-  rcases le_or_gt 0 f₁.bits with h | h
-  · have h1 := toRat_divFloor_le f₁ f₂ h₂
-    have h2 := lt_toRat_divFloor_add f₁ f₂ h₂
-    rw [divTrunc_eq_divFloor_of_nonneg (mul_nonneg h hb.le), abs_lt]
-    constructor <;> linarith
-  · have h1 := le_toRat_divCeil f₁ f₂ h₂
-    have h2 := toRat_divCeil_sub_lt f₁ f₂ h₂
-    rw [divTrunc_eq_divCeil_of_neg (mul_neg_of_neg_of_pos h hb), abs_lt]
-    constructor <;> linarith
+  grind
 
 
 end Fraction
